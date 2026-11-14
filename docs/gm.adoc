@@ -1,0 +1,283 @@
+= GM(1)
+:doctype: manpage
+:manmanual: User Commands
+:mansource: gm
+
+== NAME
+
+gm - keep project memory as note files in the repository, merged by git
+
+== SYNOPSIS
+
+*gm save* _TYPE_ *--title* _T_ *--keywords* _WORDS_ _SECTION-FLAGS_ [*--at* __PATH__[:__LINES__]]... [*--topic* _KEY_] [*--supersedes* _ID_]... +
+*gm retire* _ID_... *--why* _TEXT_ +
+*gm search* _WORDS_... [*-n* _N_] [*--type* _TYPE_] [*--all*] [*--json*] +
+*gm show* _ID_ [*--json*] +
+*gm lint* [*--review*] [*--json*] +
+*gm list* [*--by* *type*|*time*] [*-n* _N_] [*--all*] [*--json*] +
+*gm context* [*-n* _N_] +
+*gm import-engram* _FILE_ +
+*gm help* | *-h* | *--help* +
+*gm --version*
+
+== DESCRIPTION
+
+*gm* keeps the memory of a project in the repository the memory is about.
+Each note is one markdown file in *.memory/notes/*. The notes are committed
+with the work, so they travel with branches and worktrees. When branches merge,
+their notes merge with them. git is the only sync. There is no server and no
+index file.
+
+A note is never edited. A revision is a new note that names the notes it
+replaces with *--supersedes*. A note that some other note supersedes is
+history: it stays on disk, but *search*, *list* and *context* hide it. The notes
+that no note supersedes, minus retirements, are the _live_ notes.
+
+A note can point at the code it describes through _anchors_. An anchor names a
+file, and optionally a line range, at one commit. The commit never changes, so
+*gm show* prints the code that the note was written against, and *gm lint*
+reports when that code leaves the branch history or the file disappears.
+
+The file format is described in *gm-note*(5).
+
+Run every command inside a git worktree. Paths in anchors are relative to the
+root of the worktree.
+
+== COMMANDS
+
+*save* _TYPE_::
+  Write a new note and print its id and its path relative to the repository
+  root. _TYPE_ is *decision*, *lesson* or *fact*. Each type takes one flag per
+  section of its body:
++
+[horizontal]
+*decision*::: *--decision*, *--why*, *--rejected*
+*lesson*::: *--happened*, *--cause*, *--rule*
+*fact*::: *--fact*, *--evidence*
++
+Flags and words can come in any order. A word that belongs to no flag is an
+error, because it usually means an unquoted flag value.
+
+*retire* _ID_...::
+  Write a retirement: a note that supersedes the notes _ID_... and has no
+  successor. *--why* is required. Print the retirement's id and path.
+
+*search* _WORDS_...::
+  Print the live notes that contain any of _WORDS_, best match first. See
+  *SEARCH*.
+
+*show* _ID_::
+  Print the note file, then the code of each anchor, read at the anchor's
+  commit. A line-range anchor shows its lines, numbered. A whole-file anchor
+  shows the first 40 lines. An anchor whose code git cannot read shows the
+  reason instead.
+
+*lint*::
+  Check every note and print one line per problem. See *LINT*.
+
+*list*::
+  Print the live notes, grouped by type, newest first in each group.
+
+*context*::
+  Print one line that explains *gm*, then the 15 newest live notes. Outside a
+  git worktree, or in a repository without notes, print nothing. *context*
+  always exits 0, because it runs as a session-start hook in every directory.
+
+*import-engram* _FILE_::
+  Write one note for each observation in an Engram JSON export, made with
+  *engram export* _FILE_ *--project* _NAME_. See *IMPORT*.
+
+*help*, *-h*, *--help*::
+  Print a summary of the commands.
+
+*--version*::
+  Print the version.
+
+== OPTIONS
+
+*--title* _T_::
+  The note's claim, on one line, at most 120 characters.
+
+*--keywords* _WORDS_::
+  At least 3 search words, separated by spaces. Include the words a reader would
+  search with that the note itself does not use.
+
+*--at* __PATH__[:__FROM__[-__TO__]]::
+  Anchor the note to _PATH_ at HEAD, optionally to lines _FROM_ to _TO_. Repeat
+  for each file. See *ANCHORS*.
+
+*--topic* _KEY_::
+  A stable key without spaces, such as *decision/cache-store*, for a note that
+  later notes may revise.
+
+*--supersedes* _ID_::
+  The id of a note that this note replaces. Repeat for each note.
+
+*--why* _TEXT_::
+  For *retire*, why the notes no longer hold.
+
+*-n* _N_::
+  For *search*, the most results to print (default 5). For *list*, the most
+  notes to print (default all). For *context*, the most notes to print
+  (default 15).
+
+*--type* _TYPE_::
+  For *search*, only notes of this type.
+
+*--all*::
+  For *search* and *list*, include superseded notes and retirements. *search*
+  marks them *(superseded)*.
+
+*--by* *type*|*time*::
+  For *list*, group by type (the default) or print newest first without groups.
+
+*--review*::
+  For *lint*, also list the anchors whose code changed since their commit.
+
+*--json*::
+  Print JSON instead of text, for programs. See *JSON OUTPUT*.
+
+== RULES FOR A NEW NOTE
+
+*save* and *retire* refuse a note that breaks any of these rules. They print
+every broken rule at once, write nothing, and exit 2.
+
+* The title is one line of 1 to 120 characters.
+* The keywords are one line of at least 3 words. The topic has no spaces.
+* No section is empty, and no section is over 800 characters.
+* No line of section text starts with *+##+*.
+* No text looks like a credential, such as a private key, an access token, an
+  API key, a JWT, a password in a URL, or a secret-like name assigned a value
+  that mixes letters and digits. The message names the kind of secret, never
+  the text. Placeholders such as *$PASSWORD* pass.
+* Every *--supersedes* id names an existing note.
+* Every *--at* anchor can be pinned. See *ANCHORS*.
+
+When the new note has a topic, and other live notes have the same topic and
+the new note does not supersede them, *save* still writes the note. It then
+prints a warning that names those notes.
+
+== ANCHORS
+
+*--at* pins an anchor to the commit at HEAD, written with 12 hex characters:
+__COMMIT__:__PATH__[:__FROM__[-__TO__]].
+
+*save* refuses an anchor when:
+
+* the path is empty;
+* the file is not committed at HEAD;
+* the file has uncommitted changes, because the anchor must show the code that
+  the note describes (commit the code first, then save the note);
+* the line range is not _N_ or _N_-_M_ with _N_ at least 1 and _M_ at least
+  _N_, or it ends past the last line of the file.
+
+When __PATH__[:__LINES__] as a whole names a committed file, it is taken as the
+path, so a file name that contains *:* needs no escaping.
+
+== REVISIONS AND TOPICS
+
+To revise a note, save a new note with *--supersedes* _ID_. To withdraw notes
+with no successor, run *gm retire*. Never edit or delete a note file.
+
+Branches that save notes in parallel merge without conflicts, because each
+save adds a new file with a new id. When two branches revise the same topic,
+both notes stay live after the merge, and *gm lint* fails until one note
+supersedes both.
+
+== SEARCH
+
+*search* splits the query into words of letters and digits, ignoring case, and
+drops common English words such as _the_, _what_ and _why_. A note matches when
+it contains any remaining word. The query must keep at least one word.
+
+Matches are ranked with BM25. A word counts 5 times in the title, 3 times in the
+keywords, topic and anchor paths, and once in the body. When two notes score
+the same, the older note comes first.
+
+Each result is printed as the id, the type, the creation date and the title,
+then the path of the note file on the next line.
+
+== LINT
+
+*lint* prints one line per problem and exits 1 when it finds any. A problem is:
+
+* a file in *.memory/notes/* that is not a note;
+* an id used by more than one file;
+* a *supersedes* entry that names no note;
+* a live note that breaks a rule for a new note (migrated notes are checked
+  only for title, keywords, topic and secrets);
+* an anchor of a live note whose commit is missing, whose commit is not in the
+  history of HEAD, or whose file is gone at HEAD; when git sees the file as
+  renamed, the problem names the new path;
+* a topic with more than one live note.
+
+In a shallow clone, the commits of older anchors are missing. *lint* then
+checks only that their files exist at HEAD, and prints a *warning:* line that
+says how many commits it could not check. A warning does not fail *lint*.
+
+With *--review*, *lint* also prints a *review:* line for each anchor of a live
+note whose code changed after the anchor's commit. For a line range, only
+changes to those lines count, followed from the anchor's commit even when lines
+above them were added or removed. A review line does not fail *lint*.
+
+== IMPORT
+
+*import-engram* writes one note per observation. Each note gets a new id. The
+Engram types *decision*, *learning* and *bugfix* become *decision*, *lesson* and
+*lesson*. Every other type becomes *fact*. Only the *supersedes* relations that
+Engram marked _judged_ are kept. A title longer than 120 characters, or on
+several lines, is shortened, and the full title opens the body. The *migrated*
+header records the Engram id and type. An observation whose text looks like a
+credential is not imported. *import-engram* prints its Engram id and the kind
+of secret, never the text.
+
+== JSON OUTPUT
+
+*search --json*::
+  An array of results with *id*, *type*, *created*, *title*, *file*, *score*,
+  and *superseded* when true.
+
+*show --json*::
+  The note's fields, and *code*: an array with *anchor*, *from*, *lines*, and
+  *error* when git cannot read the code.
+
+*lint --json*::
+  An object with *problems* (always present), *review* and *warnings*.
+
+*list --json*::
+  An array of notes without their bodies.
+
+== EXIT STATUS
+
+*0*:: Success.
+*1*:: *lint* found problems.
+*2*:: An error, or a note that *save* or *retire* refused.
+
+== FILES
+
+*.memory/notes/*_ID_-_SLUG_.md*::
+  One note. See *gm-note*(5).
+
+== NOTES
+
+Merge branches that hold notes. A squash merge or a rebase replaces the commits
+that anchors name, and *gm lint* then reports those anchors as broken.
+
+== EXAMPLES
+
+Save a decision about committed code:
+
+  gm save decision --title "Cache uses Postgres" \
+    --keywords "cache store database postgres" \
+    --decision "Keep the cache in Postgres." \
+    --why "One database to run." --rejected "Redis: another service." \
+    --at internal/cache/store.go:10-42 --topic decision/cache-store
+
+Find and read it:
+
+  gm search where is the cache stored
+  gm show 20261114T174452Z-ef6552
+
+== SEE ALSO
+
+*gm-note*(5), *git*(1)

@@ -1,0 +1,96 @@
+= GM-NOTE(5)
+:doctype: manpage
+:manmanual: File Formats
+:mansource: gm
+
+== NAME
+
+gm-note - format of a gm memory note file
+
+== SYNOPSIS
+
+*.memory/notes/*_ID_-_SLUG_.md*
+
+== DESCRIPTION
+
+A note file is UTF-8 text. It starts with a header between two lines that hold
+only *---*, followed by the body. *gm save* writes the file, and nothing edits it
+afterwards. CRLF line ends are accepted when the file is read.
+
+== FILE NAME
+
+_ID_ is the UTC creation time as _YYYYMMDD_*T*_HHMMSS_*Z*, a hyphen, and 6
+random hex characters, for example *20261114T174452Z-ef6552*. The random part
+keeps ids unique when agents on different branches save in the same second. The
+time part makes the files sort by creation time.
+
+_SLUG_ is the title in lowercase, with each run of characters other than *a-z*
+and *0-9* replaced by one hyphen, cut to 48 characters.
+
+== HEADER
+
+One *key: value* per line, in this order. Optional keys are left out when empty.
+A reader ignores keys it does not know.
+
+*id*:: The note id.
+*type*:: *decision*, *lesson*, *fact* or *retirement*.
+*title*:: The title as a JSON string, for example *"Cache uses Postgres"*.
+*topic*:: Optional. A key without spaces, such as *decision/cache-store*.
+*keywords*:: Optional for a retirement. Search words separated by spaces.
+*at*:: Optional. A list of anchors. See *ANCHORS*.
+*supersedes*:: Optional. A list of the ids of the notes this note replaces.
+*created*:: The creation time in RFC 3339, UTC.
+*migrated*:: Optional. Where an imported note came from, for example
+  *engram obs-1a2b (decision)*.
+
+A list is written as *[a, b]*. When an item holds a comma, a bracket, a quote, or
+a leading or trailing space, the whole list is written as a JSON array instead.
+
+== BODY
+
+The body is one section per heading of the note type, in this order:
+
+[horizontal]
+*decision*:: *+## Decision+*, *+## Why+*, *+## Rejected+*
+*lesson*:: *+## What happened+*, *+## Cause+*, *+## Rule now+*
+*fact*:: *+## Fact+*, *+## Evidence+*
+*retirement*:: *+## Why+*
+
+A section holds 1 to 800 characters. A note with a *migrated* header keeps the
+body it was imported with and need not follow these sections.
+
+== ANCHORS
+
+An anchor is _COMMIT_:_PATH_, optionally followed by *:*_N_ for one line or
+*:*_N_*-*_M_ for lines _N_ to _M_. _COMMIT_ is 7 to 40 lowercase hex characters.
+_PATH_ is relative to the repository root and may contain *:*.
+
+When _PATH_ itself ends in *:* or in a part shaped like *:*_N_ or *:*_N_*-*_M_,
+the anchor ends with one more *:*, so it reads back as the same path.
+
+== EXAMPLE
+
+----
+---
+id: 20261114T174452Z-ef6552
+type: decision
+title: "Cache uses Postgres"
+topic: decision/cache-store
+keywords: cache store database postgres
+at: [3a757f54116a:internal/cache/store.go:10-42]
+supersedes: [20261113T100537Z-78bb51]
+created: 2026-11-14T17:44:52Z
+---
+## Decision
+Keep the cache in Postgres.
+
+## Why
+One database to run.
+
+## Rejected
+Redis: another service.
+----
+
+== SEE ALSO
+
+*gm*(1)

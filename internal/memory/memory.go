@@ -103,15 +103,6 @@ func (s *Store) Get(id string) (note.Note, error) {
 	return note.Note{}, fmt.Errorf("no note %s", id)
 }
 
-// Added says which commit added the note, who wrote it and when, or that it is not committed yet.
-func (s *Store) Added(n note.Note) string {
-	out, err := s.Git.Run("log", "--diff-filter=A", "--format=%h by %an on %as", "-1", "--", n.File)
-	if err != nil || out == "" {
-		return "not committed yet"
-	}
-	return "added in " + out
-}
-
 // Saved is a note just written. Others lists the live notes of its topic that it does not supersede.
 type Saved struct {
 	Note   note.Note

@@ -289,13 +289,11 @@ func show(st *memory.Store, args []string, w io.Writer) error {
 	if *asJSON {
 		emit(w, struct {
 			note.Note
-			Added string `json:"added"`
-			Code  []code `json:"code"`
-		}{n, st.Added(n), codes})
+			Code []code `json:"code"`
+		}{n, codes})
 		return nil
 	}
 	fmt.Fprint(w, n.Render())
-	fmt.Fprintf(w, "\n# %s\n", st.Added(n))
 	for _, c := range codes {
 		if c.Error != "" {
 			fmt.Fprintf(w, "\n# %s: %s\n", c.Anchor, c.Error)

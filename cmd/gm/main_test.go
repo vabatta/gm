@@ -47,19 +47,3 @@ func TestSaveTakesFlagsInAnyOrderAndSearchPrintsJSONForAgents(t *testing.T) {
 		t.Fatalf("want a clean JSON lint, got %q %d", out, code)
 	}
 }
-
-func TestShowSaysWhichCommitAddedTheNoteAndWho(t *testing.T) {
-	st := gittest.New(t)
-	gm(t, st.Git.Root, "save", "fact", "--title", "Fetch retries", "--keywords", "a b c", "--fact", "f", "--evidence", "e")
-	out, _ := gm(t, st.Git.Root, "list", "--json")
-	var ns []struct{ ID string }
-	json.Unmarshal([]byte(out), &ns)
-	if out, _ := gm(t, st.Git.Root, "show", ns[0].ID); !strings.Contains(out, "# not committed yet") {
-		t.Fatalf("want an uncommitted note said so, got %q", out)
-	}
-	gittest.Commit(t, st, "note")
-	head := gittest.Git(t, st, "rev-parse", "--short", "HEAD")
-	if out, _ := gm(t, st.Git.Root, "show", ns[0].ID); !strings.Contains(out, "# added in "+head+" by t on ") {
-		t.Fatalf("want the adding commit and author, got %q", out)
-	}
-}

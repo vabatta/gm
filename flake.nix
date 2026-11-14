@@ -13,7 +13,7 @@
 
       devShells = forAll (pkgs: {
         default = pkgs.mkShell {
-          packages = [ pkgs.go pkgs.gopls pkgs.git ];
+          packages = [ pkgs.go pkgs.gopls pkgs.git pkgs.python3 ]; # python3 runs bench/
           CGO_ENABLED = "0";
         };
       });

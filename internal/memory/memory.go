@@ -9,10 +9,10 @@ package memory
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strings"
 	"time"
 
@@ -68,10 +68,15 @@ func (s *Store) Init() error {
 	return os.WriteFile(path, []byte(text), 0o644)
 }
 
-// Files lists the note files, sorted, so by id.
+// Files lists the note files sorted by name, so by id.
 func (s *Store) Files() []string {
-	files, _ := filepath.Glob(filepath.Join(s.NotesDir(), "*.md"))
-	sort.Strings(files)
+	entries, _ := os.ReadDir(s.NotesDir())
+	var files []string
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".md") {
+			files = append(files, filepath.Join(s.NotesDir(), e.Name()))
+		}
+	}
 	return files
 }
 
@@ -237,7 +242,7 @@ func (s *Store) Lint(review bool) Report {
 	for _, n := range ns {
 		files[n.ID] = append(files[n.ID], n.File)
 	}
-	for _, id := range sortedKeys(files) {
+	for _, id := range slices.Sorted(maps.Keys(files)) {
 		if len(files[id]) > 1 {
 			report("id %s is used by %d notes: %s", id, len(files[id]), strings.Join(files[id], ", "))
 		}
@@ -276,19 +281,10 @@ func (s *Store) Lint(review bool) Report {
 			}
 		}
 	}
-	for _, t := range sortedKeys(heads) {
+	for _, t := range slices.Sorted(maps.Keys(heads)) {
 		if len(heads[t]) > 1 {
 			report("topic %s has %d live notes (parallel revisions): %s; save one note that supersedes them all", t, len(heads[t]), strings.Join(heads[t], ", "))
 		}
 	}
 	return rep
-}
-
-func sortedKeys[V any](m map[string]V) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
 }

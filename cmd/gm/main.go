@@ -4,13 +4,14 @@
 package main
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/vabatta/gm/internal/anchor"
@@ -175,11 +176,6 @@ func isBool(f *flag.Flag) bool {
 	return ok && b.IsBoolFlag()
 }
 
-type multi []string
-
-func (m *multi) String() string     { return strings.Join(*m, ",") }
-func (m *multi) Set(v string) error { *m = append(*m, v); return nil }
-
 func save(st *memory.Store, args []string, w io.Writer) error {
 	typ := ""
 	if len(args) > 0 {
@@ -193,9 +189,9 @@ func save(st *memory.Store, args []string, w io.Writer) error {
 	fs.StringVar(&n.Title, "title", "", "")
 	fs.StringVar(&n.Keywords, "keywords", "", "")
 	fs.StringVar(&n.Topic, "topic", "", "")
-	var at multi
-	fs.Var(&at, "at", "")
-	fs.Var((*multi)(&n.Supersedes), "supersedes", "")
+	var at []string
+	fs.Func("at", "", func(v string) error { at = append(at, v); return nil })
+	fs.Func("supersedes", "", func(v string) error { n.Supersedes = append(n.Supersedes, v); return nil })
 	vals := map[string]*string{}
 	for _, s := range note.Templates[typ] {
 		vals[s.Heading] = fs.String(s.Flag, "", "")
@@ -331,11 +327,12 @@ func list(st *memory.Store, args []string, w io.Writer) error {
 	if !*all {
 		ns = memory.Live(ns)
 	}
-	sort.SliceStable(ns, func(i, j int) bool {
-		if *by == "type" && ns[i].Type != ns[j].Type {
-			return ns[i].Type < ns[j].Type
+	slices.SortStableFunc(ns, func(a, b note.Note) int {
+		byType := 0
+		if *by == "type" {
+			byType = cmp.Compare(a.Type, b.Type)
 		}
-		return ns[i].Created > ns[j].Created
+		return cmp.Or(byType, cmp.Compare(b.Created, a.Created))
 	})
 	if *limit > 0 && len(ns) > *limit {
 		ns = ns[:*limit]

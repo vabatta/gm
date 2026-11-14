@@ -2,7 +2,6 @@
 package git
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -35,10 +34,13 @@ func (r *Repo) Input(stdin string, args ...string) (string, error) {
 	cmd := exec.Command("git", append([]string{"--literal-pathspecs"}, args...)...)
 	cmd.Dir = r.Root
 	cmd.Stdin = strings.NewReader(stdin)
-	var out, errb bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &out, &errb
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), strings.TrimSpace(errb.String()))
+	out, err := cmd.Output()
+	if err != nil {
+		var exit *exec.ExitError
+		if errors.As(err, &exit) {
+			err = errors.New(strings.TrimSpace(string(exit.Stderr)))
+		}
+		return "", fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
 	}
-	return strings.TrimRight(out.String(), "\n"), nil
+	return strings.TrimRight(string(out), "\n"), nil
 }

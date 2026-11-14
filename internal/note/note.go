@@ -123,7 +123,7 @@ func parseList(v string) []string {
 	if json.Unmarshal([]byte(v), &xs) == nil {
 		return xs
 	}
-	for _, x := range strings.Split(strings.Trim(v, "[]"), ",") {
+	for x := range strings.SplitSeq(strings.Trim(v, "[]"), ",") {
 		if x = strings.TrimSpace(x); x != "" {
 			xs = append(xs, x)
 		}
@@ -142,7 +142,7 @@ func Parse(content []byte, file string) (Note, error) {
 		return Note{}, errors.New("unterminated header")
 	}
 	n := Note{Body: body, File: file}
-	for _, line := range strings.Split(head, "\n") {
+	for line := range strings.SplitSeq(head, "\n") {
 		k, v, _ := strings.Cut(line, ": ")
 		switch k {
 		case "id":
@@ -182,10 +182,10 @@ func Sections(body string) map[string]string {
 			out[cur] = strings.TrimSpace(strings.Join(buf, "\n"))
 		}
 	}
-	for _, line := range strings.Split(body, "\n") {
-		if strings.HasPrefix(line, "## ") {
+	for line := range strings.SplitSeq(body, "\n") {
+		if heading, ok := strings.CutPrefix(line, "## "); ok {
 			flush()
-			cur, buf = strings.TrimPrefix(line, "## "), nil
+			cur, buf = heading, nil
 			continue
 		}
 		buf = append(buf, line)

@@ -16,6 +16,7 @@ gm - keep project memory as note files in the repository, merged by git
 *gm lint* [*--review*] [*--json*] +
 *gm list* [*--by* *type*|*time*] [*-n* _N_] [*--all*] [*--json*] +
 *gm context* [*-n* _N_] +
+*gm prune* +
 *gm import-engram* _FILE_ +
 *gm help* | *-h* | *--help* +
 *gm --version*
@@ -75,7 +76,8 @@ error, because it usually means an unquoted flag value.
   Print the note file, then the code of each anchor, read at the anchor's
   commit. A line-range anchor shows its lines, numbered. A whole-file anchor
   shows the first 40 lines. An anchor whose code git cannot read shows the
-  reason instead.
+  reason instead. A pruned note is read from git history, and a first line
+  names the commit that pruned it. See *PRUNING*.
 
 *lint*::
   Check every note and print one line per problem. See *LINT*.
@@ -87,6 +89,10 @@ error, because it usually means an unquoted flag value.
   Print one line that explains *gm*, then the 15 newest live notes. Outside a
   git worktree, or in a repository without notes, print nothing. *context*
   always exits 0, because it runs as a session-start hook in every directory.
+
+*prune*::
+  Delete the files of the notes that another note supersedes, and print the
+  path of each. See *PRUNING*.
 
 *import-engram* _FILE_::
   Write one note for each observation in an Engram JSON export, made with
@@ -130,8 +136,9 @@ error, because it usually means an unquoted flag value.
   For *search*, only notes of this type.
 
 *--all*::
-  For *search* and *list*, include superseded notes. *search* marks them
-  *(superseded)*.
+  For *search* and *list*, include superseded notes, also the ones pruned
+  from the working tree, read from git history. *search* marks them
+  *(superseded)*, and a pruned note also with the commit that pruned it.
 
 *--by* *type*|*time*::
   For *list*, group by type (the default) or print newest first without groups.
@@ -189,6 +196,26 @@ save adds a new file with a new id. When two branches revise the same topic,
 both notes stay live after the merge, and *gm lint* fails until one note
 supersedes both.
 
+== PRUNING
+
+Notes are never edited, so superseded notes pile up. *gm* reads every file in
+*.memory/notes/* for every command, so they also slow it down. *gm prune*
+deletes them from the working tree, and git history keeps them.
+
+*prune* deletes the file of every note that another note supersedes. It keeps
+live notes, retirements included. It also keeps a superseded note whose file is
+not committed as it is at HEAD, because no commit would keep that note. It
+prints *pruned* _PATH_ for each deleted file and *kept* _PATH_ for each kept
+superseded note. Commit the deletions on a branch like any other change.
+
+A pruned note stays readable. *show* _ID_ reads it from the commit before the
+one that deleted it. *search --all* and *list --all* include it. *lint* accepts
+a *supersedes* entry that names a pruned note.
+
+Branches merge as before: a note file that one branch deleted and the other
+left unchanged ends up deleted. A shallow clone lacks the history that holds
+pruned notes, so there *show* cannot find them and *--all* leaves them out.
+
 == SEARCH
 
 *search* splits the query into words of letters and digits, ignoring case, and
@@ -208,7 +235,8 @@ then the path of the note file on the next line.
 
 * a file in *.memory/notes/* that is not a note;
 * an id used by more than one file;
-* a *supersedes* entry that names no note;
+* a *supersedes* entry that names no note, neither on disk nor pruned in the
+  history of HEAD;
 * a live note that breaks a rule for a new note (migrated notes are checked
   only for title, keywords, topic and secrets);
 * an anchor of a live note whose commit is missing, whose commit is not in the
@@ -240,11 +268,12 @@ of secret, never the text.
 
 *search --json*::
   An array of results with *id*, *type*, *created*, *title*, *file*, *score*,
-  and *superseded* when another note supersedes the result.
+  *superseded* when another note supersedes the result, and *pruned_in* with
+  the commit that pruned it.
 
 *show --json*::
-  The note's fields, and *code*: an array with *anchor*, *from*, *lines*, and
-  *error* when git cannot read the code.
+  The note's fields, *pruned_in* for a pruned note, and *code*: an array with
+  *anchor*, *from*, *lines*, and *error* when git cannot read the code.
 
 *lint --json*::
   An object with *problems* (always present), *review* and *warnings*.

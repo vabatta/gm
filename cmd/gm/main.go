@@ -1,6 +1,6 @@
-// Command gm keeps project memory in the repository it is about: one markdown
-// file per note in .memory/notes, committed with the work and merged by git
-// like code. The commands are in usage, printed by `gm help`.
+// Command gm keeps project memory in the repository it is about, as one
+// markdown file per note in .memory/notes. Notes are committed with the work
+// and merged by git like code. gm help prints the commands.
 package main
 
 import (
@@ -21,6 +21,7 @@ import (
 	"github.com/vabatta/gm/internal/search"
 )
 
+// usage is the text that gm help prints.
 const usage = `gm: project memory as note files in .memory/notes, merged by git.
 
 gm save decision --title T --keywords "a b c" --decision D --why W --rejected R [options]
@@ -42,7 +43,12 @@ Exit status: 0 ok, 1 lint found problems, 2 error.
 
 func main() { os.Exit(run(os.Args[1:], ".", os.Stdout, os.Stderr)) }
 
-// run executes one gm command in dir and returns the exit status.
+// run executes one gm command in dir and returns the exit status: 0 on
+// success, 1 when lint finds problems, 2 on any other error.
+//
+// gm context always returns 0, and it prints nothing outside a repository
+// with notes. Claude Code runs it as a SessionStart hook in every directory,
+// and a failing hook would get in the way of the session.
 func run(args []string, dir string, stdout, stderr io.Writer) int {
 	if len(args) == 0 || args[0] == "help" || args[0] == "-h" || args[0] == "--help" {
 		fmt.Fprint(stdout, usage)
@@ -52,7 +58,7 @@ func run(args []string, dir string, stdout, stderr io.Writer) int {
 	st, err := memory.Open(dir)
 	if cmd == "context" {
 		if err == nil && len(st.Files()) > 0 {
-			_ = context(st, args, stdout) // the hook runs everywhere and must never fail a session
+			_ = context(st, args, stdout)
 		}
 		return 0
 	}
@@ -70,10 +76,13 @@ func run(args []string, dir string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+// lintFailed is the error dispatch returns when lint finds problems, so run
+// exits 1 instead of 2. lint has already printed the problems.
 type lintFailed int
 
 func (n lintFailed) Error() string { return fmt.Sprintf("%d problems", int(n)) }
 
+// dispatch runs the command cmd with args against st.
 func dispatch(st *memory.Store, cmd string, args []string, w io.Writer) error {
 	switch cmd {
 	case "save":
@@ -136,15 +145,21 @@ func dispatch(st *memory.Store, cmd string, args []string, w io.Writer) error {
 	return fmt.Errorf("unknown command %q; run gm help", cmd)
 }
 
+// flags returns a flag set that returns parse errors instead of printing
+// usage and exiting, so run reports every error the same way.
 func flags(name string) *flag.FlagSet {
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	return fs
 }
 
+// jsonFlag adds the --json flag to fs.
 func jsonFlag(fs *flag.FlagSet) *bool { return fs.Bool("json", false, "print JSON") }
 
-// parse lets flags and positional words come in any order, so `gm search words -n 3` works.
+// parse parses args with fs and accepts flags and positional words in any
+// order, so gm search words -n 3 works. The flag package stops at the first
+// positional word, so parse moves each flag, with the value of a non-boolean
+// flag, to the front. Everything after -- stays positional.
 func parse(fs *flag.FlagSet, args []string) error {
 	var fl, rest []string
 	for i := 0; i < len(args); i++ {
@@ -167,11 +182,16 @@ func parse(fs *flag.FlagSet, args []string) error {
 	return fs.Parse(append(append(fl, "--"), rest...))
 }
 
+// isBool reports whether f takes no value, the way the flag package decides it.
 func isBool(f *flag.Flag) bool {
 	b, ok := f.Value.(interface{ IsBoolFlag() bool })
 	return ok && b.IsBoolFlag()
 }
 
+// save runs gm save TYPE. It defines one flag per section of the type's
+// template, builds the body from those flags, and passes the note to
+// Store.Save. A positional word means a flag value was not quoted, so save
+// refuses it rather than drop it.
 func save(st *memory.Store, args []string, w io.Writer) error {
 	typ := ""
 	if len(args) > 0 {
@@ -207,6 +227,8 @@ func save(st *memory.Store, args []string, w io.Writer) error {
 	return saved(s, err, w)
 }
 
+// saved prints the id and path of the note that save or retire wrote. It warns
+// when other live notes share the note's topic.
 func saved(s memory.Saved, err error, w io.Writer) error {
 	if err != nil {
 		return err
@@ -219,6 +241,7 @@ func saved(s memory.Saved, err error, w io.Writer) error {
 	return nil
 }
 
+// find runs gm search.
 func find(st *memory.Store, args []string, w io.Writer) error {
 	fs := flags("search")
 	q := search.Query{}
@@ -248,7 +271,9 @@ func find(st *memory.Store, args []string, w io.Writer) error {
 	return nil
 }
 
-// code is an anchor's code as shown by `gm show`.
+// code is the code of one anchor as gm show prints it. From is the number of
+// the first line in Lines. When git cannot read the code, for example because
+// the commit is gone, Error is set instead.
 type code struct {
 	Anchor string   `json:"anchor"`
 	From   int      `json:"from,omitempty"`
@@ -256,6 +281,9 @@ type code struct {
 	Error  string   `json:"error,omitempty"`
 }
 
+// show runs gm show. It prints the note file, then the code of each anchor,
+// read at the anchor's commit. For a line range it prints those lines. For a
+// whole file it prints the first 40 lines.
 func show(st *memory.Store, args []string, w io.Writer) error {
 	fs := flags("show")
 	asJSON := jsonFlag(fs)
@@ -307,6 +335,9 @@ func show(st *memory.Store, args []string, w io.Writer) error {
 	return nil
 }
 
+// list runs gm list. It shows live notes unless --all is set. --by type groups
+// them by type, newest first in each group. --by time shows them newest first.
+// --json leaves out the bodies, because gm show prints a body.
 func list(st *memory.Store, args []string, w io.Writer) error {
 	fs := flags("list")
 	by := fs.String("by", "type", "")
@@ -351,15 +382,19 @@ func list(st *memory.Store, args []string, w io.Writer) error {
 	return nil
 }
 
+// context runs gm context. It prints one line on how to use gm, then the 15
+// newest live notes. An -n flag in args replaces the 15.
 func context(st *memory.Store, args []string, w io.Writer) error {
 	fmt.Fprintln(w, "Project memory (gm), recent notes. Search with `gm search WORDS`, read one with `gm show ID`; the memory skill says when to save.")
 	return list(st, append([]string{"--by", "time", "-n", "15"}, args...), w)
 }
 
+// emit writes v to w as indented JSON.
 func emit(w io.Writer, v any) {
 	e := json.NewEncoder(w)
 	e.SetIndent("", "  ")
 	_ = e.Encode(v)
 }
 
+// day returns the date part of an RFC 3339 time.
 func day(created string) string { return created[:min(10, len(created))] }

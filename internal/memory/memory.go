@@ -1,9 +1,12 @@
-// Package memory keeps the notes of one repository in <root>/.memory/notes.
+// Package memory reads and writes the notes of one repository, one file per
+// note in <root>/.memory/notes.
 //
-// A note is never edited. A revision is a new note that names the old one in
-// supersedes, and a retirement supersedes notes with no successor. When
-// parallel branches revise one topic, both notes stay live after the merge and
-// Lint fails until one note supersedes both, so a merge never loses a note.
+// A note file is never edited. A revision is a new note that names the old one
+// in its supersedes list. A retirement is a note that supersedes notes with no
+// successor. Each save adds a new file, so branches that save in parallel merge
+// without conflicts. When two branches revise one topic, both notes stay live
+// after the merge, and Lint fails until one note supersedes both. A merge
+// therefore never drops a note silently.
 package memory
 
 import (
@@ -21,10 +24,11 @@ import (
 	"github.com/vabatta/gm/internal/note"
 )
 
-// Store is the memory of the worktree it was opened in.
+// Store is the memory of one git worktree. It reads the notes of that
+// worktree's checkout, so the notes follow the branch.
 type Store struct{ Git *git.Repo }
 
-// Open returns the store of the worktree that contains dir.
+// Open returns the Store of the worktree that contains dir, or git.ErrNoRepo.
 func Open(dir string) (*Store, error) {
 	r, err := git.Open(dir)
 	if err != nil {
@@ -33,13 +37,15 @@ func Open(dir string) (*Store, error) {
 	return &Store{Git: r}, nil
 }
 
-// Dir is the .memory directory.
+// Dir returns the .memory directory at the worktree root.
 func (s *Store) Dir() string { return filepath.Join(s.Git.Root, ".memory") }
 
-// NotesDir holds one file per note.
+// NotesDir returns the directory that holds one markdown file per note.
 func (s *Store) NotesDir() string { return filepath.Join(s.Dir(), "notes") }
 
-// Files lists the note files sorted by name, so by id.
+// Files returns the paths of the .md files in NotesDir, sorted by name. A
+// name starts with the note id, so the order is by creation time. A missing
+// directory gives no files.
 func (s *Store) Files() []string {
 	entries, _ := os.ReadDir(s.NotesDir())
 	var files []string
@@ -51,7 +57,8 @@ func (s *Store) Files() []string {
 	return files
 }
 
-// Load reads every note; bad lists the files that are not notes, with the reason.
+// Load reads and parses every note file. bad lists each file that does not
+// parse, with the reason, so Lint reports the file instead of skipping it.
 func (s *Store) Load() (ns []note.Note, bad []string) {
 	for _, f := range s.Files() {
 		rel, _ := filepath.Rel(s.Git.Root, f)
@@ -69,7 +76,7 @@ func (s *Store) Load() (ns []note.Note, bad []string) {
 	return ns, bad
 }
 
-// Dead reports the ids that some note supersedes.
+// Dead returns the set of ids that some note supersedes.
 func Dead(ns []note.Note) map[string]bool {
 	dead := map[string]bool{}
 	for _, n := range ns {
@@ -80,7 +87,8 @@ func Dead(ns []note.Note) map[string]bool {
 	return dead
 }
 
-// Live drops superseded notes and retirements.
+// Live returns the notes that hold now: those that no note supersedes, minus
+// retirements.
 func Live(ns []note.Note) []note.Note {
 	dead := Dead(ns)
 	var out []note.Note
@@ -103,13 +111,17 @@ func (s *Store) Get(id string) (note.Note, error) {
 	return note.Note{}, fmt.Errorf("no note %s", id)
 }
 
-// Saved is a note just written. Others lists the live notes of its topic that it does not supersede.
+// Saved is the result of Save and Retire. Others lists the live notes of the
+// same topic that the new note does not supersede, so gm save can warn about a
+// parallel revision.
 type Saved struct {
 	Note   note.Note
 	Others []string
 }
 
-// Save pins each of at to HEAD, checks the note, and writes it, refusing it with every problem at once.
+// Save pins each spec in at to HEAD with anchor.Pin, gives the note a new id
+// and creation time, checks it, and writes it to a new file. On any problem it
+// writes nothing and returns one error that lists every problem.
 func (s *Store) Save(n note.Note, at []string) (Saved, error) {
 	var problems []string
 	for _, spec := range at {
@@ -123,7 +135,8 @@ func (s *Store) Save(n note.Note, at []string) (Saved, error) {
 	return s.create(n, problems)
 }
 
-// Retire supersedes the notes ids with a retirement that says why they no longer hold.
+// Retire writes a retirement that supersedes the notes ids and records why in
+// its Why section. Its title lists the retired titles, cut to note.MaxTitle.
 func (s *Store) Retire(ids []string, why string) (Saved, error) {
 	if len(ids) == 0 {
 		return Saved{}, errors.New("retire needs the ids of the notes to retire")
@@ -145,6 +158,9 @@ func (s *Store) Retire(ids []string, why string) (Saved, error) {
 	}, nil)
 }
 
+// create gives n its id and creation time, checks it, writes it, and finds the
+// other live notes of its topic. problems holds problems found earlier, such
+// as anchors that Pin refused.
 func (s *Store) create(n note.Note, problems []string) (Saved, error) {
 	now := time.Now()
 	n.ID, n.Created = note.NewID(now), now.UTC().Format(time.RFC3339)
@@ -177,7 +193,9 @@ func (s *Store) create(n note.Note, problems []string) (Saved, error) {
 	return saved, nil
 }
 
-// Write stores n in a new file without checking it, and never overwrites a file.
+// Write writes n to a new file in NotesDir without checking it and returns n
+// with File set. It creates the file with O_EXCL, so it never overwrites a
+// note. engram.Import calls it directly for migrated notes.
 func (s *Store) Write(n note.Note) (note.Note, error) {
 	if err := os.MkdirAll(s.NotesDir(), 0o755); err != nil {
 		return n, err
@@ -196,17 +214,22 @@ func (s *Store) Write(n note.Note) (note.Note, error) {
 	return n, err
 }
 
-// Report is the outcome of Lint. Problems fail it. Review lists anchors to re-read and Warnings
-// what lint could not check; neither fails it.
+// Report is the result of Lint. Problems make gm lint exit 1. Review lists the
+// anchors of live notes whose code changed since, and Warnings lists what Lint
+// could not check. Neither Review nor Warnings makes gm lint fail.
 type Report struct {
 	Problems []string `json:"problems"`
 	Review   []string `json:"review,omitempty"`
 	Warnings []string `json:"warnings,omitempty"`
 }
 
-// Lint checks every note: parse errors, duplicate ids, broken supersedes, the
-// rules of live notes, anchors that no longer point at code, and topics with
-// more than one live note. With review it also lists live anchors whose code changed since.
+// Lint checks every note. A problem is a file that does not parse, an id used
+// by more than one file, a supersedes entry that names no note, a live note
+// that breaks a rule in note.Problems, an anchor that anchor.Check finds
+// broken, or a topic with more than one live note. Superseded notes and
+// retirements are history, so of the per-note checks only the supersedes check
+// applies to them. With
+// review, Lint also runs anchor.Changed on each sound anchor of a live note.
 func (s *Store) Lint(review bool) Report {
 	ns, bad := s.Load()
 	rep := Report{Problems: bad}

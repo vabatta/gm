@@ -1,6 +1,7 @@
-// Package search ranks notes against a query with BM25, computed in memory
-// from the note files on every search. With no index there is nothing to
-// keep fresh, ignore or rebuild.
+// Package search ranks notes against a query with BM25, the relevance formula
+// that SQLite FTS5 uses. It reads the note files on every search. A few hundred
+// small files take milliseconds to read, so there is no index to build, keep
+// fresh or git-ignore.
 package search
 
 import (
@@ -15,17 +16,18 @@ import (
 	"github.com/vabatta/gm/internal/memory"
 )
 
-// Query is a search: any of its words may match. Notes rank by BM25 with
-// term counts weighted 5 in the title, 3 in the keywords and 1 in the body.
-// Topic and anchor paths count as keywords.
+// Query is one search.
 type Query struct {
+	// Words is the query text. Find splits it into words and drops the words
+	// in stop. A note matches when it holds any of the remaining words.
 	Words string
-	Limit int
-	Type  string // only notes of this type when set
-	All   bool   // include superseded and retired notes
+	Limit int    // the most hits Find returns
+	Type  string // when set, only notes of this type match
+	All   bool   // when set, superseded notes and retirements match too
 }
 
-// Hit is one search result.
+// Hit is one search result. Superseded is true for a superseded note or a
+// retirement. Score is the BM25 score, and a higher score ranks first.
 type Hit struct {
 	ID         string  `json:"id"`
 	Type       string  `json:"type"`
@@ -36,13 +38,19 @@ type Hit struct {
 	Score      float64 `json:"score"`
 }
 
-// BM25 parameters, the ones SQLite FTS5 uses.
+// k1 and b are the BM25 parameters. They have the SQLite FTS5 values, so the
+// ranking matches the FTS5 index that gm used before.
 const k1, b = 1.2, 0.75
 
 var (
+	// wordRe finds words the way the FTS5 unicode61 tokenizer does, as runs of
+	// letters and digits, except that it keeps diacritics.
 	wordRe = regexp.MustCompile(`[\pL\pN]+`)
-	split  = strings.NewReplacer("/", " ", ".", " ", "_", " ", "-", " ")
-	stop   = map[string]bool{}
+	// split turns the separators in topics and paths into spaces, so that
+	// decision/cache-store and internal/search/search.go give searchable words.
+	split = strings.NewReplacer("/", " ", ".", " ", "_", " ", "-", " ")
+	// stop holds common English words that would match almost every note.
+	stop = map[string]bool{}
 )
 
 func init() {
@@ -51,9 +59,16 @@ func init() {
 	}
 }
 
+// words returns the words of s in lowercase.
 func words(s string) []string { return wordRe.FindAllString(strings.ToLower(s), -1) }
 
-// Find returns the best matches for q, best first.
+// Find returns at most q.Limit notes that match q, best first.
+//
+// The score is BM25 over three fields. A query word counts 5 times in the
+// title, 3 times in the keywords, topic and anchor paths, and once in the body.
+// Document frequency and average length cover all notes, superseded ones
+// included, as in FTS5. Notes with equal scores keep file order, so the older
+// note comes first.
 func Find(st *memory.Store, q Query) ([]Hit, error) {
 	terms := map[string]bool{}
 	for _, w := range words(q.Words) {
@@ -68,8 +83,8 @@ func Find(st *memory.Store, q Query) ([]Hit, error) {
 	dead := memory.Dead(ns)
 	type doc struct {
 		hit Hit
-		tf  map[string]float64 // weighted count of each query term
-		len int
+		tf  map[string]float64 // weighted count of each query word in the note
+		len int                // all words in the note, unweighted, as FTS5 counts length
 	}
 	docs := make([]doc, len(ns))
 	df := map[string]int{}

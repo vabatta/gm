@@ -1,8 +1,11 @@
-// Package note defines a memory note: its fields, its file format, and the
-// rules a note must meet before it is written.
+// Package note defines a memory note, its file format, and the rules a new
+// note must meet.
 //
-// A note file is a header between two --- lines, one "key: value" per line,
-// followed by the body: one "## Heading" section per template section.
+// A note file starts with a header between two "---" lines, one "key: value"
+// per line. The title is a JSON string, so any title fits on one line. The at
+// and supersedes lists are written as [a, b], or as a JSON array when an item
+// needs quoting. The body follows the header, with one "## Heading" section for
+// each section in the note type's template.
 package note
 
 import (
@@ -19,24 +22,42 @@ import (
 
 // Note is one memory note as stored in a file.
 type Note struct {
-	ID         string   `json:"id"`
-	Type       string   `json:"type"`
-	Title      string   `json:"title"`
-	Topic      string   `json:"topic,omitempty"`
-	Keywords   string   `json:"keywords,omitempty"`
-	At         []string `json:"at,omitempty"`
+	// ID is the creation time plus 6 random hex characters; see NewID.
+	ID string `json:"id"`
+	// Type is decision, lesson, fact or retirement, and picks the template in Templates.
+	Type string `json:"type"`
+	// Title is a one-line claim of at most MaxTitle characters.
+	Title string `json:"title"`
+	// Topic is an optional stable key, such as decision/cache-store. Lint
+	// fails when two live notes share a topic.
+	Topic string `json:"topic,omitempty"`
+	// Keywords are space-separated search words, including synonyms the text
+	// does not use. Search weights them between the title and the body.
+	Keywords string `json:"keywords,omitempty"`
+	// At lists the anchors, written commit:path[:from[-to]]; see package anchor.
+	At []string `json:"at,omitempty"`
+	// Supersedes lists the ids of the notes this note replaces. A superseded
+	// note stays on disk as history but is no longer live.
 	Supersedes []string `json:"supersedes,omitempty"`
-	Created    string   `json:"created"`
-	Migrated   string   `json:"migrated,omitempty"`
-	Body       string   `json:"body"`
-	// File is the note's path relative to the repository root. It is not stored in the note.
+	// Created is the creation time in RFC 3339, UTC. gm list and gm context sort by it.
+	Created string `json:"created"`
+	// Migrated records where an imported note came from, such as
+	// "engram obs-1 (decision)". A migrated note keeps the body it was imported
+	// with, so Problems skips the template checks for it.
+	Migrated string `json:"migrated,omitempty"`
+	// Body holds the "## Heading" sections.
+	Body string `json:"body"`
+	// File is the note's path relative to the repository root. It is not
+	// written in the header, because the file's own path holds it.
 	File string `json:"file"`
 }
 
-// Section is one heading of a note body and the save flag that fills it.
+// Section is one heading of a note body and the gm save flag that fills it.
 type Section struct{ Heading, Flag string }
 
-// Templates names the sections each note type must have, in order.
+// Templates lists, for each note type, the sections its body must have, in
+// order. gm save defines one flag per section, and Problems refuses a note with
+// a missing or empty section. Only gm retire writes a retirement.
 var Templates = map[string][]Section{
 	"decision":   {{"Decision", "decision"}, {"Why", "why"}, {"Rejected", "rejected"}},
 	"lesson":     {{"What happened", "happened"}, {"Cause", "cause"}, {"Rule now", "rule"}},
@@ -44,14 +65,18 @@ var Templates = map[string][]Section{
 	"retirement": {{"Why", "why"}},
 }
 
-// Limits a new note must meet.
+// Limits a new note must meet. They keep each note to one idea that a search
+// result can show in full. Lengths count characters, not bytes.
 const (
-	MaxTitle    = 120 // characters
-	MaxSection  = 800 // characters per section, so a note holds one idea
-	MinKeywords = 3
+	MaxTitle    = 120
+	MaxSection  = 800 // per section
+	MinKeywords = 3   // words, so that synonyms the text does not use can find the note
 )
 
-// NewID returns a UTC timestamp plus 6 random hex characters, so parallel agents never pick the same id.
+// NewID returns the id of a note created at t: the UTC time as
+// 20060102T150405Z, a hyphen, and 6 random hex characters. The random part keeps
+// ids unique when agents on parallel branches save in the same second. The time
+// part makes ids, and so note file names, sort by creation time.
 func NewID(t time.Time) string {
 	b := make([]byte, 3)
 	_, _ = rand.Read(b)
@@ -60,7 +85,10 @@ func NewID(t time.Time) string {
 
 var nonSlug = regexp.MustCompile(`[^a-z0-9]+`)
 
-// FileName is the note's file name: its id and a slug of its title.
+// FileName returns the note's file name: the id, a hyphen, and the title in
+// lowercase with each run of other characters turned into a hyphen, cut to 48
+// characters. The id alone identifies the note. The title part helps a person
+// who reads the directory listing.
 func (n Note) FileName() string {
 	s := strings.Trim(nonSlug.ReplaceAllString(strings.ToLower(n.Title), "-"), "-")
 	if len(s) > 48 {
@@ -69,7 +97,8 @@ func (n Note) FileName() string {
 	return n.ID + "-" + s + ".md"
 }
 
-// Shorten cuts s to at most max characters, marking a cut with "...".
+// Shorten cuts s to at most max characters and ends a cut string with "...".
+// It counts characters, not bytes, so it never splits a multibyte character.
 func Shorten(s string, max int) string {
 	if utf8.RuneCountInString(s) <= max {
 		return s
@@ -77,7 +106,9 @@ func Shorten(s string, max int) string {
 	return strings.TrimSpace(string([]rune(s)[:max-3])) + "..."
 }
 
-// Body renders sections in the order of the type's template.
+// Body renders the body of a note of type typ. text maps a section heading to
+// its text. Sections appear in template order, and a heading missing from text
+// renders as an empty section, which Problems then reports.
 func Body(typ string, text map[string]string) string {
 	var b strings.Builder
 	for _, s := range Templates[typ] {
@@ -86,7 +117,8 @@ func Body(typ string, text map[string]string) string {
 	return strings.TrimSpace(b.String()) + "\n"
 }
 
-// Render returns the note's file content.
+// Render returns the content of the note's file. Empty optional fields are
+// left out of the header.
 func (n Note) Render() string {
 	t, _ := json.Marshal(n.Title)
 	h := []string{"---", "id: " + n.ID, "type: " + n.Type, "title: " + string(t)}
@@ -104,7 +136,9 @@ func (n Note) Render() string {
 	return strings.Join(append(h, "---"), "\n") + "\n" + n.Body
 }
 
-// list renders [a, b], or a JSON array when an item holds a comma, bracket, quote or edge space.
+// list writes a header list as [a, b]. It writes a JSON array instead when an
+// item holds a comma, a bracket, a quote, or a leading or trailing space,
+// because the plain form would split or trim such an item.
 func list(xs []string) string {
 	if len(xs) == 0 {
 		return ""
@@ -118,6 +152,7 @@ func list(xs []string) string {
 	return "[" + strings.Join(xs, ", ") + "]"
 }
 
+// parseList reads either form that list writes.
 func parseList(v string) []string {
 	var xs []string
 	if json.Unmarshal([]byte(v), &xs) == nil {
@@ -131,7 +166,9 @@ func parseList(v string) []string {
 	return xs
 }
 
-// Parse reads a note file's content; file is its path relative to the repository root.
+// Parse reads the content of a note file. file is the file's path relative to
+// the repository root, kept in Note.File. CRLF line ends are accepted. Unknown
+// header keys are ignored, so an older gm can read notes from a newer one.
 func Parse(content []byte, file string) (Note, error) {
 	s := strings.ReplaceAll(string(content), "\r\n", "\n")
 	if !strings.HasPrefix(s, "---\n") {
@@ -173,7 +210,8 @@ func Parse(content []byte, file string) (Note, error) {
 	return n, nil
 }
 
-// Sections splits a body into its "## Heading" sections.
+// Sections splits a body into its sections, keyed by heading. A section runs
+// from its "## " line to the next one. Text before the first heading is dropped.
 func Sections(body string) map[string]string {
 	out := map[string]string{}
 	cur, buf := "", []string(nil)
@@ -194,7 +232,12 @@ func Sections(body string) map[string]string {
 	return out
 }
 
-// Problems returns every rule the note breaks. Migrated notes keep their free-form body.
+// Problems returns every rule the note breaks, so gm save can refuse a note
+// with all of its problems at once. Every note is checked for its title, the
+// form of its keywords and topic, and secrets. The checks stop there for a
+// migrated note, because its body was written before the templates existed.
+// Other notes are also checked for their type, keyword count, retirement
+// target and sections.
 func (n Note) Problems() []string {
 	var p []string
 	if n.Title == "" || strings.ContainsAny(n.Title, "\r\n") || utf8.RuneCountInString(n.Title) > MaxTitle {
@@ -235,6 +278,9 @@ func (n Note) Problems() []string {
 	return p
 }
 
+// secrets are credential formats with a fixed prefix or shape. The
+// password-in-a-URL pattern skips a password that starts with $, <, { or *,
+// because that marks a placeholder such as $PASSWORD.
 var secrets = []struct {
 	kind string
 	re   *regexp.Regexp
@@ -251,10 +297,16 @@ var secrets = []struct {
 	{"password in a URL", regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9+.-]*://[^\s:/@]+:[^\s/@$<{*][^\s/@]{2,}@`)},
 }
 
+// assigned matches a secret-like name given a value of 12 or more characters,
+// such as API_KEY=a1b2c3d4e5f6. Secret counts a match only when the value holds
+// both a digit and a letter, so prose such as "token: refresh_tokens_are_cached"
+// passes.
 var assigned = regexp.MustCompile(`(?i)(?:api[_-]?key|secret|token|passw(?:or)?d|pwd|credential)s?["']?\s*[:=]\s*["']?([A-Za-z0-9/+_.=-]{12,})`)
 var digit, letter = regexp.MustCompile(`[0-9]`), regexp.MustCompile(`[A-Za-z]`)
 
-// Secret reports whether s holds text shaped like a credential, and which kind.
+// Secret reports whether s holds text shaped like a credential, and names the
+// kind. Callers print the kind, never the matched text, so gm does not echo a
+// secret.
 func Secret(s string) (string, bool) {
 	for _, x := range secrets {
 		if x.re.MatchString(s) {

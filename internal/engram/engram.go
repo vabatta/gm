@@ -1,4 +1,6 @@
-// Package engram migrates an Engram JSON export (`engram export FILE --project X`) into note files.
+// Package engram turns an Engram JSON export, made with
+// engram export FILE --project NAME, into gm note files. It serves the
+// one-time move of existing memories from Engram to gm.
 package engram
 
 import (
@@ -11,6 +13,7 @@ import (
 	"github.com/vabatta/gm/internal/note"
 )
 
+// export holds the fields of an Engram export that Import uses.
 type export struct {
 	Observations []struct {
 		SyncID    string `json:"sync_id"`
@@ -28,19 +31,31 @@ type export struct {
 	} `json:"relations"`
 }
 
-// Result counts what Import wrote. Refused lists observations not written because they hold a secret.
+// Result is what Import wrote. Notes counts the note files and Links the
+// supersedes links kept. Refused lists the observations that were not written
+// because their text looks like a secret, as sync id and kind of secret, never
+// as text.
 type Result struct {
 	Notes, Links int
 	Refused      []string
 }
 
-// types maps Engram observation types to note types; any other type becomes a fact.
+// types maps Engram observation types to note types. Any other type becomes a fact.
 var types = map[string]string{"decision": "decision", "learning": "lesson", "bugfix": "lesson"}
 
-// Import writes one note per observation with a new random id. It keeps the
-// judged supersedes relations and drops the others. A title over the limit is
-// shortened, and the full title opens the body. Each note records its origin
-// in a migrated header, which also exempts it from the section template.
+// Import writes one note file for each observation in the export at file.
+//
+// Each note gets a new id from note.NewID at the observation's creation time.
+// Engram's own ids are not reused, because ids derived from them collided. A
+// supersedes relation is kept only when Engram marked it judged, and all other
+// relations are dropped. A title on several lines or longer than note.MaxTitle
+// is cut, and the full title becomes the first paragraph of the body. Spaces
+// in a topic key become hyphens, because a topic is one word. The migrated
+// header records the Engram sync id and type. It also exempts the note from the
+// section templates, which Engram text does not follow.
+//
+// An observation whose text looks like a secret is not written, and relations
+// to it are dropped, so no credential reaches the repository.
 func Import(st *memory.Store, file string) (Result, error) {
 	raw, err := os.ReadFile(file)
 	if err != nil {
@@ -52,7 +67,7 @@ func Import(st *memory.Store, file string) (Result, error) {
 	}
 	var res Result
 	created := map[string]time.Time{}
-	ids := map[string]string{} // only for observations that will be written
+	ids := map[string]string{} // sync id -> new note id, only for observations that will be written
 	for _, o := range ex.Observations {
 		if kind, bad := note.Secret(o.Title + "\n" + o.Content); bad {
 			res.Refused = append(res.Refused, o.SyncID+" ("+kind+")")

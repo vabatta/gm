@@ -1,4 +1,5 @@
-// Package gittest makes throwaway git repositories for tests.
+// Package gittest makes throwaway git repositories for tests. gm's behaviour
+// depends on what git reports, so tests run against real git, not a fake.
 package gittest
 
 import (
@@ -11,7 +12,9 @@ import (
 	"github.com/vabatta/gm/internal/note"
 )
 
-// New makes a repository with one committed file, fetch.go, and returns its store.
+// New makes a repository in a temporary directory with one committed file,
+// fetch.go, and returns its Store. It turns commit signing off, because a
+// global git config that signs commits would make test commits fail.
 func New(t *testing.T) *memory.Store {
 	t.Helper()
 	dir := t.TempDir()
@@ -34,7 +37,7 @@ func Git(t *testing.T, st *memory.Store, args ...string) string {
 	return out
 }
 
-// Commit commits every change.
+// Commit stages every change and commits it.
 func Commit(t *testing.T, st *memory.Store, msg string) {
 	t.Helper()
 	Git(t, st, "add", "-A")
@@ -53,7 +56,7 @@ func Write(t *testing.T, st *memory.Store, name, s string) {
 	}
 }
 
-// Fact saves a valid fact note anchored at the given specs.
+// Fact saves a fact note that passes every check, anchored at each spec in at.
 func Fact(st *memory.Store, title string, at ...string) (memory.Saved, error) {
 	return st.Save(note.Note{Type: "fact", Title: title, Keywords: "fetch retry backoff",
 		Body: note.Body("fact", map[string]string{"Fact": "f", "Evidence": "e"})}, at)

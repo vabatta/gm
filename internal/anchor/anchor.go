@@ -1,7 +1,8 @@
-// Package anchor ties a note to the code it is about: a path, optionally a
-// line range, at one commit. The commit never changes, so the anchored code
-// can be read at any time, and git can tell whether it still exists and
-// whether it changed since.
+// Package anchor ties a note to the code it describes. An anchor names a file,
+// and optionally a line range, at one commit. A commit never changes, so gm can
+// always read the code that the note was written against. git can also tell
+// whether that commit is still in the branch history and whether the code
+// changed after it.
 package anchor
 
 import (
@@ -14,19 +15,23 @@ import (
 	"github.com/vabatta/gm/internal/git"
 )
 
-// Anchor is a fixed place in the code, written commit:path[:from[-to]].
-// A path that itself ends in ":" or in something shaped like a line range is
-// written with one extra trailing ":" so it reads back unchanged.
+// Anchor is a place in the code at one commit, written commit:path[:from[-to]].
+// Path is relative to the repository root. From and To are the first and last
+// line, counted from 1. Both are 0 when the anchor covers the whole file.
+//
+// A path that ends in ":", ":N" or ":N-M" would read back as a line range. For
+// such a path String adds one more ":" at the end, and Parse removes it.
 type Anchor struct {
 	Commit, Path string
-	From, To     int // 0 when the anchor is the whole file
+	From, To     int
 }
 
 var (
-	commitRe = regexp.MustCompile(`^[0-9a-f]{7,40}$`)
-	rangeRe  = regexp.MustCompile(`:[0-9]+(-[0-9]+)?$`)
+	commitRe = regexp.MustCompile(`^[0-9a-f]{7,40}$`)   // an abbreviated or full commit id
+	rangeRe  = regexp.MustCompile(`:[0-9]+(-[0-9]+)?$`) // a final :N or :N-M
 )
 
+// String returns the anchor in the form Parse reads.
 func (a Anchor) String() string {
 	s := a.Commit + ":" + a.Path
 	switch {
@@ -40,7 +45,8 @@ func (a Anchor) String() string {
 	return s
 }
 
-// Parse reads commit:path[:from[-to]].
+// Parse reads an anchor in the form String writes. The commit ends at the first
+// ":", so the path may contain ":". A final ":N" or ":N-M" is the line range.
 func Parse(s string) (Anchor, error) {
 	commit, rest, ok := strings.Cut(s, ":")
 	if !ok || rest == "" || !commitRe.MatchString(commit) {
@@ -61,7 +67,8 @@ func Parse(s string) (Anchor, error) {
 	return a, nil
 }
 
-// Lines reads N or N-M.
+// Lines reads a line range written N or N-M, with 1 <= N <= M, and returns the
+// first and last line.
 func Lines(s string) (int, int, error) {
 	a, b, isRange := strings.Cut(s, "-")
 	from, err := strconv.Atoi(a)
@@ -75,9 +82,14 @@ func Lines(s string) (int, int, error) {
 	return from, to, nil
 }
 
-// Pin turns path[:from[-to]], relative to the repository root, into an anchor at HEAD.
-// It refuses a file with uncommitted changes, so the anchor shows the code the note describes.
-// A spec that names an existing file is taken whole, so paths holding ":" need no escaping.
+// Pin turns spec, written path[:from[-to]] relative to the repository root,
+// into an anchor at HEAD, with the commit id cut to 12 hex characters.
+//
+// When spec names a file at HEAD, Pin takes it whole, so a path that contains
+// ":" needs no escaping. Otherwise a final ":N" or ":N-M" is the line range.
+// Pin refuses a file that is not committed at HEAD or that has uncommitted
+// changes, because the anchor must show the code that the note describes. It
+// also refuses an empty path and a range past the end of the file.
 func Pin(r *git.Repo, spec string) (Anchor, error) {
 	head, err := r.Run("rev-parse", "--short=12", "HEAD")
 	if err != nil {
@@ -110,7 +122,9 @@ func Pin(r *git.Repo, spec string) (Anchor, error) {
 	return a, nil
 }
 
-// Code returns the anchored lines at the anchor's commit, numbered from 1; a whole-file anchor returns every line.
+// Code returns the file's lines at the anchor's commit, read with git cat-file.
+// For a line range it returns lines 1 to To, so index i holds line i+1 and the
+// caller drops the lines before From. For a whole file it returns every line.
 func Code(r *git.Repo, a Anchor) ([]string, error) {
 	content, err := r.Run("cat-file", "-p", a.Commit+":"+a.Path)
 	if err != nil {
@@ -123,11 +137,22 @@ func Code(r *git.Repo, a Anchor) ([]string, error) {
 	return lines, nil
 }
 
-// Check asks git, in a few batched calls, whether each anchor still points at
-// code: its commit must be in the history of HEAD and its file must exist at
-// HEAD. It returns a problem for each broken anchor, keyed by the anchor as written.
-// A shallow clone lacks old commits, so there unseen counts the anchors whose
-// commit could not be checked; their files are still checked at HEAD.
+// Check asks git whether each anchor in specs still points at code, and returns
+// a problem for each broken anchor, keyed by the anchor as written in the note.
+// An anchor is broken when its commit is missing, when its commit is not in the
+// history of HEAD (a squash or a rebase replaced it), or when its file is gone
+// at HEAD. When git sees the file as renamed since the commit, the problem
+// names the new path.
+//
+// The number of git processes does not grow with the number of anchors. One
+// cat-file --batch-check looks up every commit and every HEAD:path. One
+// rev-list --stdin lists the anchor commits that HEAD does not contain. One
+// rev-parse tells whether the clone is shallow. Rename detection runs only for
+// missing files, once per commit.
+//
+// A shallow clone does not have the old commits, so there a missing commit is
+// not a problem. unseen counts those anchors, and Check still checks their
+// files at HEAD.
 func Check(r *git.Repo, specs []string) (problems map[string]string, unseen int) {
 	problems = map[string]string{}
 	var as []Anchor
@@ -160,7 +185,7 @@ func Check(r *git.Repo, specs []string) (problems map[string]string, unseen int)
 		}
 		return problems, 0
 	}
-	full := map[string]string{} // object asked -> full id, absent when missing
+	full := map[string]string{} // object asked for -> its full id; no entry when git has no such object
 	for i, obj := range objects {
 		if f := strings.Fields(lines[i]); len(f) == 3 {
 			full[obj] = f[0]
@@ -173,7 +198,7 @@ func Check(r *git.Repo, specs []string) (problems map[string]string, unseen int)
 		}
 	}
 	stdin.WriteString("^HEAD\n")
-	unreached := map[string]bool{} // commits the anchors name that HEAD does not contain
+	unreached := map[string]bool{} // anchor commits that HEAD does not contain
 	out, err = r.Input(stdin.String(), "rev-list", "--stdin")
 	for _, id := range strings.Fields(out) {
 		unreached[id] = true
@@ -208,7 +233,9 @@ func Check(r *git.Repo, specs []string) (problems map[string]string, unseen int)
 	return problems, unseen
 }
 
-// renamed maps old paths to new ones for files git sees as renamed between commit and HEAD.
+// renamed maps old paths to new paths for the files that git diff -M finds
+// renamed between commit and HEAD. Copies are skipped, because after a copy the
+// original file still exists.
 func renamed(r *git.Repo, commit string) map[string]string {
 	out, _ := r.Run("diff", "-M", "--name-status", "-z", commit, "HEAD")
 	m := map[string]string{}
@@ -226,7 +253,11 @@ func renamed(r *git.Repo, commit string) map[string]string {
 	return m
 }
 
-// Changed counts the commits after the anchor's that touched its lines, or its file when it has no lines.
+// Changed counts the commits after the anchor's commit that touched the
+// anchored code: git log -L for a line range, git log -- path for a whole file.
+// git log -L reads the line numbers in the file at HEAD, not at the anchor's
+// commit. After lines are added or removed above the range, it follows other
+// lines.
 func Changed(r *git.Repo, a Anchor) int {
 	var out string
 	if a.From > 0 {

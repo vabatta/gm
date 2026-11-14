@@ -1,7 +1,6 @@
 package main
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -62,23 +61,44 @@ func TestLint(t *testing.T) {
 		r.commit("delete")
 		fails(t, lint(r), "the file no longer exists at HEAD")
 	})
-	t.Run("reports an anchor whose commit is not in the history of HEAD", func(t *testing.T) {
-		r := newRepo(t)
-		r.git("checkout", "-qb", "side")
-		r.write("side.go", "package x\n")
-		r.commit("side")
-		r.fact("Side code", "--at", "side.go")
-		note := strings.TrimPrefix(r.notes()[0], r.dir+"/")
-		content := r.read(note)
-		r.git("checkout", "-q", "main") // as after a squash: the note arrives without the commit it names
-		r.write("side.go", "package x\n")
-		r.write(note, content)
-		fails(t, lint(r), "commit is not in the history of HEAD")
+	t.Run("after a squash or a rebase merge, reads anchors at the commit that added the note", func(t *testing.T) {
+		for _, strategy := range []string{"squash", "rebase"} {
+			clone, id := merged(t, strategy)
+			if out := clone.ok("lint"); out != "" {
+				t.Fatalf("%s: want a clean lint, got %q", strategy, out)
+			}
+			added := clone.git("log", "--diff-filter=A", "--format=%h", "--abbrev=12", "--", ".memory/notes")
+			has(t, clone.ok("show", id), ":fetch.go:3 (read at "+added+", the commit that added the note)\n    3  func Fetch() { retry() }\n")
+			clone.write("fetch.go", "// Package x.\npackage x\n\nfunc Fetch() { retry() }\n")
+			clone.commit("comment above")
+			if out := clone.ok("lint", "--review"); out != "" {
+				t.Fatalf("%s: want no review after lines above moved, got %q", strategy, out)
+			}
+			clone.write("fetch.go", "// Package x.\npackage x\n\nfunc Fetch() { retry(5) }\n")
+			clone.commit("edit")
+			has(t, clone.ok("lint", "--review"), "review: ", ":fetch.go:3")
+		}
 	})
-	t.Run("reports an anchor whose commit is missing", func(t *testing.T) {
+	t.Run("reads an anchor whose commit is missing at the commit that added the note", func(t *testing.T) {
 		r := newRepo(t)
-		r.note("20200101T000000Z-aaaaaa", "type: fact\ntitle: \"T\"\nkeywords: a b c\nat: [deadbeefdead:fetch.go]\ncreated: 2020-01-01T00:00:00Z\n", sound)
-		fails(t, lint(r), "deadbeefdead:fetch.go: commit not found")
+		r.note("20200101T000000Z-aaaaaa", "type: fact\ntitle: \"T\"\nkeywords: a b c\nat: [deadbeefdead:fetch.go:3]\ncreated: 2020-01-01T00:00:00Z\n", sound)
+		r.commit("note")
+		if out := r.ok("lint"); out != "" {
+			t.Fatalf("want a clean lint, got %q", out)
+		}
+		has(t, r.ok("show", "20200101T000000Z-aaaaaa"), "    3  func Fetch() {}\n")
+	})
+	t.Run("fails while a note on a branch not yet in the default branch describes code that changed after it", func(t *testing.T) {
+		r := newRepo(t)
+		r.git("checkout", "-qb", "feat")
+		r.fact("Fetch is empty", "--at", "fetch.go:3")
+		r.commit("note")
+		r.write("fetch.go", "package x\n\nfunc Fetch() { retry() }\n")
+		r.commit("change after the note")
+		fails(t, lint(r), ":fetch.go:3: the anchored code changed after the note")
+		r.git("checkout", "-q", "main")
+		r.git("merge", "-q", "--no-ff", "--no-edit", "feat")
+		has(t, r.ok("lint", "--review"), "review: ", ":fetch.go:3")
 	})
 	t.Run("in a shallow clone checks anchored files and warns about the commits it cannot see", func(t *testing.T) {
 		r := newRepo(t)

@@ -62,7 +62,10 @@ body it was imported with and need not follow these sections.
 == ANCHORS
 
 An anchor is _COMMIT_:_PATH_, optionally followed by *:*_N_ for one line or
-*:*_N_*-*_M_ for lines _N_ to _M_. _COMMIT_ is 7 to 40 lowercase hex characters.
+*:*_N_*-*_M_ for lines _N_ to _M_. _COMMIT_ is 7 to 40 lowercase hex characters:
+HEAD when the note was saved. After a squash or rebase merge, that commit may
+no longer exist, and *gm* reads the anchor at the commit that added the note
+instead; see *gm*(1), *ANCHORS*.
 _PATH_ is relative to the repository root and may contain *:*.
 
 When _PATH_ itself ends in *:* or in a part shaped like *:*_N_ or *:*_N_*-*_M_,

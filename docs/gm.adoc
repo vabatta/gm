@@ -74,7 +74,8 @@ error, because it usually means an unquoted flag value.
 
 *show* _ID_::
   Print the note file, then the code of each anchor, read at the anchor's
-  commit. A line-range anchor shows its lines, numbered. A whole-file anchor
+  base commit (see *ANCHORS*). When the base is not the anchor's own commit,
+  the heading of the anchor names it. A line-range anchor shows its lines, numbered. A whole-file anchor
   shows the first 40 lines. An anchor whose code git cannot read shows the
   reason instead. A pruned note is read from git history, and a first line
   names the commit that pruned it. See *PRUNING*.
@@ -186,6 +187,17 @@ __COMMIT__:__PATH__[:__FROM__[-__TO__]].
 When __PATH__[:__LINES__] as a whole names a committed file, it is taken as the
 path, so a file name that contains *:* needs no escaping.
 
+*gm* reads an anchor at a _base_ commit:
+
+* the anchor's own commit, while it is in the history of HEAD;
+* otherwise the commit that added the note, which a squash or rebase merge
+  leaves in place of the anchor's commit. That commit holds the code the note
+  describes, because the code is committed before or with the note;
+* otherwise HEAD, for a note that is not committed yet.
+
+So anchors keep working after a merge commit, a squash merge and a rebase
+merge alike. *show*, *lint* and *lint --review* all use the base.
+
 == REVISIONS AND TOPICS
 
 To revise a note, save a new note with *--supersedes* _ID_. To withdraw notes
@@ -239,9 +251,12 @@ then the path of the note file on the next line.
   history of HEAD;
 * a live note that breaks a rule for a new note (migrated notes are checked
   only for title, keywords, topic and secrets);
-* an anchor of a live note whose commit is missing, whose commit is not in the
-  history of HEAD, or whose file is gone at HEAD; when git sees the file as
-  renamed, the problem names the new path;
+* an anchor of a live note whose file is gone at HEAD; when git sees the file
+  as renamed since the base, the problem names the new path;
+* an anchor of a live note that is not yet on the default branch, whose code
+  changed after the base. The note describes code that no longer exists, and a
+  squash merge would hide that, so save a revision before merging. The default
+  branch is *origin/HEAD*, or else *main*, or else *master*;
 * a topic with more than one live note.
 
 In a shallow clone, the commits of older anchors are missing. *lint* then
@@ -249,9 +264,9 @@ checks only that their files exist at HEAD, and prints a *warning:* line that
 says how many commits it could not check. A warning does not fail *lint*.
 
 With *--review*, *lint* also prints a *review:* line for each anchor of a live
-note whose code changed after the anchor's commit. For a line range, only
-changes to those lines count, followed from the anchor's commit even when lines
-above them were added or removed. A review line does not fail *lint*.
+note on the default branch whose code changed after the base. For a line
+range, only changes to those lines count, followed from the base even when
+lines above them were added or removed. A review line does not fail *lint*.
 
 == IMPORT
 
@@ -294,8 +309,9 @@ of secret, never the text.
 
 == NOTES
 
-Merge branches that hold notes. A squash merge or a rebase replaces the commits
-that anchors name, and *gm lint* then reports those anchors as broken.
+Run *gm lint* on a branch before merging it. It fails while a note on the
+branch describes code that changed after the note, which a squash merge would
+otherwise hide.
 
 == EXAMPLES
 

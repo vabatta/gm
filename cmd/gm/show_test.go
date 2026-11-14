@@ -30,8 +30,8 @@ func TestShow(t *testing.T) {
 	})
 	t.Run("prints the reason when git cannot read an anchor's code", func(t *testing.T) {
 		r := newRepo(t)
-		r.note("20200101T000000Z-aaaaaa", "type: fact\ntitle: \"Gone\"\nkeywords: a b c\nat: [deadbeefdead:fetch.go]\ncreated: 2020-01-01T00:00:00Z\n", "## Fact\nf\n\n## Evidence\ne\n")
-		has(t, r.ok("show", "20200101T000000Z-aaaaaa"), "\n# deadbeefdead:fetch.go: ")
+		r.note("20200101T000000Z-aaaaaa", "type: fact\ntitle: \"Gone\"\nkeywords: a b c\nat: [deadbeefdead:gone.go]\ncreated: 2020-01-01T00:00:00Z\n", "## Fact\nf\n\n## Evidence\ne\n")
+		has(t, r.ok("show", "20200101T000000Z-aaaaaa"), "\n# deadbeefdead:gone.go: ")
 	})
 	t.Run("exits 2 for an unknown id", func(t *testing.T) {
 		refused(t, newRepo(t).gm("show", "20200101T000000Z-000000"), "no note")

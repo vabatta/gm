@@ -194,3 +194,34 @@ func equal(t *testing.T, got, want []string) {
 		t.Fatalf("want %v, got %v", want, got)
 	}
 }
+
+// merged makes a repository whose main branch holds a branch that committed
+// code and then a note anchored to it, merged with strategy "squash" or
+// "rebase" while main moved on. It returns a clone over file://, which holds
+// only what main reaches, as a clone from GitHub does after the branch is
+// deleted, and the note's id.
+func merged(t *testing.T, strategy string) (*repo, string) {
+	t.Helper()
+	r := newRepo(t)
+	r.git("checkout", "-qb", "feat")
+	r.write("fetch.go", "package x\n\nfunc Fetch() { retry() }\n")
+	r.commit("retry")
+	id := r.fact("Fetch retries", "--at", "fetch.go:3")
+	r.commit("note")
+	r.git("checkout", "-q", "main")
+	r.write("other.go", "package x\n")
+	r.commit("main moves")
+	if strategy == "squash" {
+		r.git("merge", "-q", "--squash", "feat")
+		r.commit("squash feat")
+	} else {
+		r.git("checkout", "-q", "feat")
+		r.git("rebase", "-q", "main")
+		r.git("checkout", "-q", "main")
+		r.git("merge", "-q", "--ff-only", "feat")
+	}
+	r.git("branch", "-qD", "feat")
+	clone := &repo{t, t.TempDir()}
+	clone.git("clone", "-q", "file://"+r.dir, ".")
+	return clone, id
+}

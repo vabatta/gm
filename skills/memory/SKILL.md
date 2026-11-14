@@ -9,7 +9,7 @@ Project memory lives in the repository it is about, one note per file in `.memor
 
 ## Recall before you work
 
-At the start of a task, and before reading code to answer a question, run `gm search` with the words of the question. When the first search misses, search again with two rewordings: synonyms, the module name, the error text. Read a hit with `gm show ID`, which prints the note and the code its anchors point at, read from the commit the note was written against. Done when a note answers the question or three searches found nothing.
+At the start of a task, and before reading code to answer a question, run `gm search` with the words of the question. When the first search misses, search again with two rewordings: synonyms, the module name, the error text. For what came before or how something changed, search with `--all`, which adds superseded notes, also those pruned into git history. Read a hit with `gm show ID`, which prints the note and the code its anchors point at, read from the commit the note was written against. Done when a note answers the question or three searches found nothing.
 
 A note is evidence from the time it was written, not a fact about the code now. When `gm show` and the current code disagree, the code wins. Save a revision.
 
@@ -22,7 +22,9 @@ Save when the work produced something a later agent would otherwise rediscover: 
 3. Run `gm save TYPE ...` from the repository root. When it refuses, fix every listed problem and run it again. When it warns that the topic has other live notes, decide whether the new note replaces them, and if so save it again with `--supersedes ID` for each one it replaces. Done when `gm save` prints the new note's id and path.
 4. Commit the note on the same branch as the work. Done when the note file is committed.
 
-A note is never edited. To change one, save a new note with `--supersedes ID`. To withdraw one with no successor, run `gm retire ID --why "..."`. Done when the new note or retirement is committed.
+A note is never edited. To change one, save a new note with `--supersedes ID`. To withdraw one with no successor, run `gm retire ID --why "..."`, and say in the reason what replaced it. Done when the new note or retirement is committed.
+
+`gm prune` deletes superseded notes from the working tree; `gm show` and `--all` still read them from git history. Prune only when the person asks, then commit the deletions. Done when the prune commit is in.
 
 ## Check before you hand over
 

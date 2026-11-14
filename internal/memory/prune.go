@@ -45,14 +45,17 @@ func (s *Store) Prune() (pruned, kept []string, err error) {
 	return pruned, kept, nil
 }
 
-// prunedFile is a note file that a commit in the history of HEAD deleted.
-type prunedFile struct{ commit, path string }
+// prunedFile is a note file that a commit in the history of HEAD deleted:
+// the commit, the file's path, and the id of the blob it held.
+type prunedFile struct{ commit, path, blob string }
 
 // prunedFiles lists the note files deleted in the history of HEAD, newest
-// deletion first, with one git log call. A shallow clone lists only the
-// deletions in the history it has.
+// deletion first, with one git log --raw call. The raw diff names the blob
+// of each deleted file, so the note can be read by blob id without walking
+// the tree of the commit before. A shallow clone lists only the deletions in
+// the history it has.
 func (s *Store) prunedFiles() []prunedFile {
-	out, err := s.Git.Run("log", "--diff-filter=D", "--name-only", "--format=commit %H", "--", notesPath)
+	out, err := s.Git.Run("log", "--diff-filter=D", "--raw", "--no-abbrev", "--format=commit %H", "--", notesPath)
 	if err != nil {
 		return nil
 	}
@@ -61,8 +64,12 @@ func (s *Store) prunedFiles() []prunedFile {
 	for line := range strings.SplitSeq(out, "\n") {
 		if c, ok := strings.CutPrefix(line, "commit "); ok {
 			commit = c
-		} else if strings.HasSuffix(line, ".md") && path.Dir(line) == notesPath {
-			files = append(files, prunedFile{commit, line})
+			continue
+		}
+		// :100644 000000 <old blob> <new blob> D<TAB><path>
+		meta, file, ok := strings.Cut(line, "\t")
+		if f := strings.Fields(meta); ok && len(f) == 5 && strings.HasSuffix(file, ".md") && path.Dir(file) == notesPath {
+			files = append(files, prunedFile{commit, file, f[2]})
 		}
 	}
 	return files
@@ -83,9 +90,9 @@ func (s *Store) prunedIDs() map[string]bool {
 // idLen is the length of a note id: 20060102T150405Z-abcdef.
 const idLen = 23
 
-// Pruned reads the notes deleted in the history of HEAD back from git, each
-// from the parent of the commit that deleted it, with one cat-file --batch
-// call. Each note has PrunedIn set to that commit, cut to 12 hex characters.
+// Pruned reads the notes deleted in the history of HEAD back from git, by the
+// blob each deleted file held, with one cat-file --batch call. Each note has
+// PrunedIn set to the commit that deleted it, cut to 12 hex characters.
 func (s *Store) Pruned() []note.Note {
 	files := s.prunedFiles()
 	if len(files) == 0 {
@@ -93,7 +100,7 @@ func (s *Store) Pruned() []note.Note {
 	}
 	var stdin strings.Builder
 	for _, f := range files {
-		stdin.WriteString(f.commit + "^:" + f.path + "\n")
+		stdin.WriteString(f.blob + "\n")
 	}
 	out, err := s.Git.Raw(stdin.String(), "cat-file", "--batch")
 	if err != nil {
@@ -105,7 +112,7 @@ func (s *Store) Pruned() []note.Note {
 		head, rest, _ := strings.Cut(out, "\n")
 		fields := strings.Fields(head)
 		if len(fields) != 3 {
-			out = rest // "<object> missing": the parent commit is not in this clone
+			out = rest // "<blob> missing": a partial clone without the blob
 			continue
 		}
 		size, _ := strconv.Atoi(fields[2])

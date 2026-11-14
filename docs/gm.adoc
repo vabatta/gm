@@ -208,8 +208,8 @@ not committed as it is at HEAD, because no commit would keep that note. It
 prints *pruned* _PATH_ for each deleted file and *kept* _PATH_ for each kept
 superseded note. Commit the deletions on a branch like any other change.
 
-A pruned note stays readable. *show* _ID_ reads it from the commit before the
-one that deleted it. *search --all* and *list --all* include it. *lint* accepts
+A pruned note stays readable. *show* _ID_ reads it from git history, as the
+file was when a commit deleted it. *search --all* and *list --all* include it. *lint* accepts
 a *supersedes* entry that names a pruned note.
 
 Branches merge as before: a note file that one branch deleted and the other

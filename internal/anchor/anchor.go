@@ -126,8 +126,10 @@ func Code(r *git.Repo, a Anchor) ([]string, error) {
 // Check asks git, in a few batched calls, whether each anchor still points at
 // code: its commit must be in the history of HEAD and its file must exist at
 // HEAD. It returns a problem for each broken anchor, keyed by the anchor as written.
-func Check(r *git.Repo, specs []string) map[string]string {
-	problems := map[string]string{}
+// A shallow clone lacks old commits, so there unseen counts the anchors whose
+// commit could not be checked; their files are still checked at HEAD.
+func Check(r *git.Repo, specs []string) (problems map[string]string, unseen int) {
+	problems = map[string]string{}
 	var as []Anchor
 	var written, objects []string
 	seen := map[string]bool{}
@@ -148,7 +150,7 @@ func Check(r *git.Repo, specs []string) map[string]string {
 		ask("HEAD:" + a.Path)
 	}
 	if len(as) == 0 {
-		return problems
+		return problems, 0
 	}
 	out, err := r.Input(strings.Join(objects, "\n")+"\n", "cat-file", "--batch-check")
 	lines := strings.Split(out, "\n")
@@ -156,7 +158,7 @@ func Check(r *git.Repo, specs []string) map[string]string {
 		for i := range as {
 			problems[written[i]] = "git could not check anchors: " + fmt.Sprint(err)
 		}
-		return problems
+		return problems, 0
 	}
 	full := map[string]string{} // object asked -> full id, absent when missing
 	for i, obj := range objects {
@@ -176,11 +178,17 @@ func Check(r *git.Repo, specs []string) map[string]string {
 	for _, id := range strings.Fields(out) {
 		unreached[id] = true
 	}
+	shallow, _ := r.Run("rev-parse", "--is-shallow-repository")
 	renames := map[string]map[string]string{}
 	for i, a := range as {
 		s := written[i]
 		id := full[a.Commit+"^{commit}"]
 		switch {
+		case id == "" && shallow == "true":
+			unseen++
+			if full["HEAD:"+a.Path] == "" {
+				problems[s] = "the file no longer exists at HEAD"
+			}
 		case id == "":
 			problems[s] = "commit not found (a squash, a rebase or a shallow clone dropped it)"
 		case err != nil || unreached[id]:
@@ -197,7 +205,7 @@ func Check(r *git.Repo, specs []string) map[string]string {
 			}
 		}
 	}
-	return problems
+	return problems, unseen
 }
 
 // renamed maps old paths to new ones for files git sees as renamed between commit and HEAD.

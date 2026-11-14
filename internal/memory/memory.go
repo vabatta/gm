@@ -103,6 +103,15 @@ func (s *Store) Get(id string) (note.Note, error) {
 	return note.Note{}, fmt.Errorf("no note %s", id)
 }
 
+// Added says which commit added the note, who wrote it and when, or that it is not committed yet.
+func (s *Store) Added(n note.Note) string {
+	out, err := s.Git.Run("log", "--diff-filter=A", "--format=%h by %an on %as", "-1", "--", n.File)
+	if err != nil || out == "" {
+		return "not committed yet"
+	}
+	return "added in " + out
+}
+
 // Saved is a note just written. Others lists the live notes of its topic that it does not supersede.
 type Saved struct {
 	Note   note.Note
@@ -196,10 +205,12 @@ func (s *Store) Write(n note.Note) (note.Note, error) {
 	return n, err
 }
 
-// Report is the outcome of Lint. Problems fail it; Review lists anchors to re-read and does not.
+// Report is the outcome of Lint. Problems fail it. Review lists anchors to re-read and Warnings
+// what lint could not check; neither fails it.
 type Report struct {
 	Problems []string `json:"problems"`
 	Review   []string `json:"review,omitempty"`
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // Lint checks every note: parse errors, duplicate ids, broken supersedes, the
@@ -237,7 +248,10 @@ func (s *Store) Lint(review bool) Report {
 			heads[n.Topic] = append(heads[n.Topic], n.ID)
 		}
 	}
-	broken := anchor.Check(s.Git, specs)
+	broken, unseen := anchor.Check(s.Git, specs)
+	if unseen > 0 {
+		rep.Warnings = append(rep.Warnings, fmt.Sprintf("shallow clone: %d anchor commits are not here, so only their files were checked; fetch the full history to check them", unseen))
+	}
 	for _, n := range live {
 		for _, p := range n.Problems() {
 			report("%s: %s", n.File, p)

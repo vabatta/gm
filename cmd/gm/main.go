@@ -109,6 +109,9 @@ func dispatch(st *memory.Store, cmd string, args []string, w io.Writer) error {
 			for _, r := range rep.Review {
 				fmt.Fprintln(w, "review:", r)
 			}
+			for _, r := range rep.Warnings {
+				fmt.Fprintln(w, "warning:", r)
+			}
 		}
 		if len(rep.Problems) > 0 {
 			return lintFailed(len(rep.Problems))
@@ -286,11 +289,13 @@ func show(st *memory.Store, args []string, w io.Writer) error {
 	if *asJSON {
 		emit(w, struct {
 			note.Note
-			Code []code `json:"code"`
-		}{n, codes})
+			Added string `json:"added"`
+			Code  []code `json:"code"`
+		}{n, st.Added(n), codes})
 		return nil
 	}
 	fmt.Fprint(w, n.Render())
+	fmt.Fprintf(w, "\n# %s\n", st.Added(n))
 	for _, c := range codes {
 		if c.Error != "" {
 			fmt.Fprintf(w, "\n# %s: %s\n", c.Anchor, c.Error)

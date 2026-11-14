@@ -138,3 +138,29 @@ func TestNotesSavedOnTwoBranchesMergeWithoutConflictAndBothStayLive(t *testing.T
 		t.Fatalf("want both notes live and a clean lint after plain merges, got %d notes, %q", len(ns), problems(st))
 	}
 }
+
+func TestLintInAShallowCloneChecksAnchoredFilesButNotCommitsItCannotSee(t *testing.T) {
+	st := gittest.New(t)
+	if _, err := gittest.Fact(st, "Fetch lives here", "fetch.go"); err != nil {
+		t.Fatal(err)
+	}
+	gittest.Commit(t, st, "note")
+	gittest.Write(t, st, "other.go", "package x\n")
+	gittest.Commit(t, st, "later")
+	dir := t.TempDir()
+	gittest.Git(t, st, "clone", "-q", "--depth", "1", "file://"+st.Git.Root, dir)
+	clone, err := memory.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep := clone.Lint(false)
+	if len(rep.Problems) != 0 || !strings.Contains(strings.Join(rep.Warnings, "\n"), "shallow clone") {
+		t.Fatalf("want no problems and a shallow-clone warning, got %+v", rep)
+	}
+	for _, args := range [][]string{{"config", "user.email", "t@t"}, {"config", "user.name", "t"}, {"config", "commit.gpgsign", "false"}, {"rm", "-q", "fetch.go"}, {"commit", "-qm", "delete"}} {
+		gittest.Git(t, clone, args...)
+	}
+	if p := strings.Join(clone.Lint(false).Problems, "\n"); !strings.Contains(p, "no longer exists") {
+		t.Fatalf("want the deleted file reported even in a shallow clone, got %q", p)
+	}
+}

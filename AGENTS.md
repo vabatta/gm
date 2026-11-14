@@ -12,7 +12,7 @@ gm keeps project memory as note files in the repository they concern, merged by 
 
 ## Rules of the work
 
-1. Work in the dev shell: `nix develop`.
+1. Work in the dev shell: `direnv allow` once (the `.envrc` loads the flake), or `nix develop`.
 2. Done means `nix flake check` passes. It builds the binary and runs `go test ./...` in the sandbox. `vendorHash` is null because there are no dependencies.
 3. Before handing over, run `gm lint` in this repository.
 4. Merge branches; never squash or rebase them. Notes anchor commits, and lint fails when a squash drops them.

@@ -23,11 +23,11 @@ type Query struct {
 	Words string
 	Limit int    // the most hits Find returns
 	Type  string // when set, only notes of this type match
-	All   bool   // when set, superseded notes and retirements match too
+	All   bool   // when set, superseded notes match too
 }
 
-// Hit is one search result. Superseded is true for a superseded note or a
-// retirement. Score is the BM25 score, and a higher score ranks first.
+// Hit is one search result. Superseded is true when another note supersedes
+// it. Score is the BM25 score, and a higher score ranks first.
 type Hit struct {
 	ID         string  `json:"id"`
 	Type       string  `json:"type"`
@@ -97,7 +97,7 @@ func Find(st *memory.Store, q Query) ([]Hit, error) {
 			}
 		}
 		d := doc{hit: Hit{ID: n.ID, Type: n.Type, Created: n.Created, Title: n.Title, File: n.File,
-			Superseded: dead[n.ID] || n.Type == "retirement"}, tf: map[string]float64{}}
+			Superseded: dead[n.ID]}, tf: map[string]float64{}}
 		for _, col := range []struct {
 			text   string
 			weight float64

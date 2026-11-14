@@ -82,13 +82,14 @@ func Dead(ns []note.Note) map[string]bool {
 	return dead
 }
 
-// Live returns the notes that hold now: those that no note supersedes, minus
-// retirements.
+// Live returns the notes that hold now: those that no note supersedes.
+// Retirements are live, because their reason often says what replaced the
+// notes they retire.
 func Live(ns []note.Note) []note.Note {
 	dead := Dead(ns)
 	var out []note.Note
 	for _, n := range ns {
-		if !dead[n.ID] && n.Type != "retirement" {
+		if !dead[n.ID] {
 			out = append(out, n)
 		}
 	}

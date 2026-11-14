@@ -22,10 +22,10 @@ type Report struct {
 // Lint checks every note. A problem is a file that does not parse, an id used
 // by more than one file, a supersedes entry that names no note, a live note
 // that breaks a rule in note.Problems, an anchor that anchor.Check finds
-// broken, or a topic with more than one live note. Superseded notes and
-// retirements are history, so of the per-note checks only the supersedes check
-// applies to them. With
-// review, Lint also runs anchor.Changed on each sound anchor of a live note.
+// broken, or a topic with more than one live note. Superseded notes are
+// history, so of the per-note checks only the supersedes check applies to
+// them. With review, Lint also runs anchor.Changed on each sound anchor of a
+// live note.
 func (s *Store) Lint(review bool) Report {
 	ns, bad := s.Load()
 	rep := Report{Problems: bad}
@@ -49,7 +49,7 @@ func (s *Store) Lint(review bool) Report {
 				report("%s: supersedes unknown note %s", n.File, id)
 			}
 		}
-		if dead[n.ID] || n.Type == "retirement" {
+		if dead[n.ID] {
 			continue
 		}
 		live = append(live, n)

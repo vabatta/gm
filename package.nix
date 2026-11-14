@@ -5,9 +5,9 @@ buildGoModule {
   version = "0.1.0";
   src = lib.fileset.toSource {
     root = ./.;
-    fileset = lib.fileset.unions [ ./go.mod ./go.sum ./cmd ./internal ./skills ];
+    fileset = lib.fileset.unions [ ./go.mod ./cmd ./internal ./skills ];
   };
-  vendorHash = "sha256-FxgeYuorQgdiU2go/9y3rTAFkdf5I16rSRXLX/9XWQQ=";
+  vendorHash = null; # standard library only
   env.CGO_ENABLED = "0";
   ldflags = [ "-s" "-w" ];
   nativeCheckInputs = [ git ]; # the tests make real git repositories

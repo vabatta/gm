@@ -7,10 +7,6 @@ description: "Saves and recalls project memory as note files committed in the re
 
 Project memory lives in the repository it is about, one note per file in `.memory/notes/`. Git merges notes like code. `gm` writes, searches, and checks them. Run `gm help` for every command and flag. Add `--json` to `search`, `show`, `list`, and `lint` when you parse the output.
 
-## Set up once per repository
-
-When `.memory/notes/` does not exist and the work produced something worth saving, run `gm init` at the repository root and commit the `.gitignore` change with the first note. Done when `.gitignore` lists `.memory/index.sqlite`.
-
 ## Recall before you work
 
 At the start of a task, and before reading code to answer a question, run `gm search` with the words of the question. When the first search misses, search again with two rewordings: synonyms, the module name, the error text. Read a hit with `gm show ID`, which prints the note and the code its anchors point at, read from the commit the note was written against. Done when a note answers the question or three searches found nothing.
@@ -35,6 +31,5 @@ Run `gm lint` after merging another branch and before opening a pull request. It
 ## Never
 
 - Never edit or delete a note file by hand. Notes are the history.
-- Never commit `.memory/index.sqlite`. It is a local index rebuilt from the notes.
 - Never put a secret, token, or personal data in a note.
 - Never squash or rebase a branch whose notes anchor its commits. Merge it, so the anchored commits stay in the history.

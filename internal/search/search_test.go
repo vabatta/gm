@@ -1,11 +1,11 @@
-package index_test
+package search_test
 
 import (
 	"testing"
 
 	"github.com/vabatta/gm/internal/gittest"
-	"github.com/vabatta/gm/internal/index"
 	"github.com/vabatta/gm/internal/note"
+	"github.com/vabatta/gm/internal/search"
 )
 
 func TestSearchRanksTitleMatchesFirstAndHidesSupersededNotesUnlessAll(t *testing.T) {
@@ -20,17 +20,17 @@ func TestSearchRanksTitleMatchesFirstAndHidesSupersededNotesUnlessAll(t *testing
 	}
 	body := save("Workers share one queue", "jobs backlog pool", "the proxy budget is checked per job")
 	title := save("Proxy budget ignores bytes", "cost flat rate", "billed flat")
-	if hits, err := index.Search(st, index.Query{Words: "proxy budget", Limit: 5}); err != nil || len(hits) != 2 || hits[0].ID != title {
+	if hits, err := search.Find(st, search.Query{Words: "proxy budget", Limit: 5}); err != nil || len(hits) != 2 || hits[0].ID != title {
 		t.Fatalf("want the title match first, got %+v %v", hits, err)
 	}
 	save("Proxy budget counts requests", "cost flat rate", "per request", title)
-	hits, _ := index.Search(st, index.Query{Words: "proxy budget", Limit: 5})
+	hits, _ := search.Find(st, search.Query{Words: "proxy budget", Limit: 5})
 	for _, h := range hits {
 		if h.ID == title {
 			t.Fatalf("want the superseded note hidden, got %+v", hits)
 		}
 	}
-	hits, _ = index.Search(st, index.Query{Words: "proxy budget", Limit: 5, All: true})
+	hits, _ = search.Find(st, search.Query{Words: "proxy budget", Limit: 5, All: true})
 	if len(hits) != 3 || hits[len(hits)-1].ID != body {
 		t.Fatalf("want all three with --all, body match last, got %+v", hits)
 	}

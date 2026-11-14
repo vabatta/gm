@@ -123,10 +123,6 @@ func TestLintFlagsParallelRevisionsOfOneTopicUntilOneNoteSupersedesBoth(t *testi
 
 func TestNotesSavedOnTwoBranchesMergeWithoutConflictAndBothStayLive(t *testing.T) {
 	st := gittest.New(t)
-	if err := st.Init(); err != nil {
-		t.Fatal(err)
-	}
-	gittest.Commit(t, st, "init memory")
 	for _, branch := range []string{"a", "b"} {
 		gittest.Git(t, st, "checkout", "-qb", branch, "main")
 		if _, err := gittest.Fact(st, "Note from "+branch, "fetch.go"); err != nil {
@@ -140,22 +136,5 @@ func TestNotesSavedOnTwoBranchesMergeWithoutConflictAndBothStayLive(t *testing.T
 	ns, _ := st.Load()
 	if len(memory.Live(ns)) != 2 || problems(st) != "" {
 		t.Fatalf("want both notes live and a clean lint after plain merges, got %d notes, %q", len(ns), problems(st))
-	}
-}
-
-func TestInitIgnoresTheIndexAndChangesNothingTheSecondTime(t *testing.T) {
-	st := gittest.New(t)
-	gittest.Write(t, st, ".gitignore", "bin/")
-	for range 2 {
-		if err := st.Init(); err != nil {
-			t.Fatal(err)
-		}
-	}
-	b, _ := os.ReadFile(filepath.Join(st.Git.Root, ".gitignore"))
-	if want := "bin/\n.memory/index.sqlite\n.memory/index.sqlite.tmp*\n"; string(b) != want {
-		t.Fatalf("want %q, got %q", want, b)
-	}
-	if fi, err := os.Stat(st.NotesDir()); err != nil || !fi.IsDir() {
-		t.Fatal("want .memory/notes created")
 	}
 }

@@ -39,35 +39,6 @@ func (s *Store) Dir() string { return filepath.Join(s.Git.Root, ".memory") }
 // NotesDir holds one file per note.
 func (s *Store) NotesDir() string { return filepath.Join(s.Dir(), "notes") }
 
-// ignored are the .gitignore lines that keep the local index out of git.
-var ignored = []string{".memory/index.sqlite", ".memory/index.sqlite.tmp*"}
-
-// Init creates the notes directory and adds the index to .gitignore. Running it again changes nothing.
-func (s *Store) Init() error {
-	if err := os.MkdirAll(s.NotesDir(), 0o755); err != nil {
-		return err
-	}
-	path := filepath.Join(s.Git.Root, ".gitignore")
-	b, err := os.ReadFile(path)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-	text := string(b)
-	have := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
-	for _, line := range ignored {
-		if !slices.Contains(have, line) {
-			if text != "" && !strings.HasSuffix(text, "\n") {
-				text += "\n"
-			}
-			text += line + "\n"
-		}
-	}
-	if text == string(b) {
-		return nil
-	}
-	return os.WriteFile(path, []byte(text), 0o644)
-}
-
 // Files lists the note files sorted by name, so by id.
 func (s *Store) Files() []string {
 	entries, _ := os.ReadDir(s.NotesDir())

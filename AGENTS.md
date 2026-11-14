@@ -7,12 +7,12 @@ gm keeps project memory as note files in the repository they concern, merged by 
 1. The code is the source of truth. Behaviour lives in test names and types. Write no plan, ADR, or doc that restates code; record a design decision as a gm note in `.memory/notes/` (`gm save decision ...`).
 2. Doc comments on every exported identifier, Go standard library style. Comments state constraints the code cannot express, nothing more.
 3. Few tests, each named for the promise it keeps, run against real temporary git repositories (`internal/gittest`). A new promise gets one test.
-4. Stay one static binary: pure Go (`CGO_ENABLED=0`), standard library plus `modernc.org/sqlite`. git is the only runtime dependency.
+4. Stay one static binary on the Go standard library alone (`CGO_ENABLED=0`, no modules in `go.mod`). git is the only runtime dependency. Prefer a standard library call to custom code.
 5. The note format is a contract with every repository that holds notes. Change it only in ways older notes still parse.
 
 ## Rules of the work
 
 1. Work in the dev shell: `nix develop`.
-2. Done means `nix flake check` passes. It builds the binary and runs `go test ./...` in the sandbox. After a dependency change, update `vendorHash` in `package.nix` from the hash nix reports.
+2. Done means `nix flake check` passes. It builds the binary and runs `go test ./...` in the sandbox. `vendorHash` is null because there are no dependencies.
 3. Before handing over, run `gm lint` in this repository.
 4. Merge branches; never squash or rebase them. Notes anchor commits, and lint fails when a squash drops them.

@@ -16,14 +16,13 @@ import (
 
 	"github.com/vabatta/gm/internal/anchor"
 	"github.com/vabatta/gm/internal/engram"
-	"github.com/vabatta/gm/internal/index"
 	"github.com/vabatta/gm/internal/memory"
 	"github.com/vabatta/gm/internal/note"
+	"github.com/vabatta/gm/internal/search"
 )
 
 const usage = `gm: project memory as note files in .memory/notes, merged by git.
 
-gm init                  create .memory/notes and git-ignore the local index; safe to rerun
 gm save decision --title T --keywords "a b c" --decision D --why W --rejected R [options]
 gm save lesson   --title T --keywords "a b c" --happened H --cause C --rule R [options]
 gm save fact     --title T --keywords "a b c" --fact F --evidence E [options]
@@ -77,12 +76,6 @@ func (n lintFailed) Error() string { return fmt.Sprintf("%d problems", int(n)) }
 
 func dispatch(st *memory.Store, cmd string, args []string, w io.Writer) error {
 	switch cmd {
-	case "init":
-		if err := st.Init(); err != nil {
-			return err
-		}
-		fmt.Fprintln(w, "gm: memory ready in .memory/notes; commit .gitignore and your notes with your work")
-		return nil
 	case "save":
 		return save(st, args, w)
 	case "retire":
@@ -94,7 +87,7 @@ func dispatch(st *memory.Store, cmd string, args []string, w io.Writer) error {
 		s, err := st.Retire(fs.Args(), *why)
 		return saved(s, err, w)
 	case "search":
-		return search(st, args, w)
+		return find(st, args, w)
 	case "show":
 		return show(st, args, w)
 	case "lint":
@@ -223,9 +216,9 @@ func saved(s memory.Saved, err error, w io.Writer) error {
 	return nil
 }
 
-func search(st *memory.Store, args []string, w io.Writer) error {
+func find(st *memory.Store, args []string, w io.Writer) error {
 	fs := flags("search")
-	q := index.Query{}
+	q := search.Query{}
 	fs.IntVar(&q.Limit, "n", 5, "")
 	fs.StringVar(&q.Type, "type", "", "")
 	fs.BoolVar(&q.All, "all", false, "")
@@ -234,12 +227,12 @@ func search(st *memory.Store, args []string, w io.Writer) error {
 		return err
 	}
 	q.Words = strings.Join(fs.Args(), " ")
-	hits, err := index.Search(st, q)
+	hits, err := search.Find(st, q)
 	if err != nil {
 		return err
 	}
 	if *asJSON {
-		emit(w, append([]index.Hit{}, hits...))
+		emit(w, append([]search.Hit{}, hits...))
 		return nil
 	}
 	for _, h := range hits {

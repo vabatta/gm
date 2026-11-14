@@ -40,7 +40,7 @@ func Pin(r *git.Repo, spec string) (Anchor, error) {
 		return Anchor{}, fmt.Errorf("at %s: the file has uncommitted changes; commit the code first, then save the note", spec)
 	}
 	if a.From > 0 {
-		lines, _ := Code(r, a)
+		lines, _ := Code(r, a.Commit, a)
 		if a.To > len(lines) {
 			return Anchor{}, fmt.Errorf("at %s: the file has %d lines", spec, len(lines))
 		}
@@ -48,11 +48,11 @@ func Pin(r *git.Repo, spec string) (Anchor, error) {
 	return a, nil
 }
 
-// Code returns the file's lines at the anchor's commit, read with git cat-file.
+// Code returns the anchored file's lines at commit base, read with git cat-file.
 // For a line range it returns lines 1 to To, so index i holds line i+1 and the
 // caller drops the lines before From. For a whole file it returns every line.
-func Code(r *git.Repo, a Anchor) ([]string, error) {
-	content, err := r.Run("cat-file", "-p", a.Commit+":"+a.Path)
+func Code(r *git.Repo, base string, a Anchor) ([]string, error) {
+	content, err := r.Run("cat-file", "-p", base+":"+a.Path)
 	if err != nil {
 		return nil, err
 	}

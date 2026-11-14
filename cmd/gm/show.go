@@ -15,6 +15,7 @@ import (
 // the commit is gone, Error is set instead.
 type code struct {
 	Anchor string   `json:"anchor"`
+	ReadAt string   `json:"read_at,omitempty"` // the base, when it is not the anchor's own commit
 	From   int      `json:"from,omitempty"`
 	Lines  []string `json:"lines,omitempty"`
 	Error  string   `json:"error,omitempty"`
@@ -37,11 +38,16 @@ func show(st *memory.Store, args []string, w io.Writer) error {
 		return err
 	}
 	var codes []code
-	for _, s := range n.At {
-		c := code{Anchor: s, From: 1}
-		a, err := anchor.Parse(s)
-		if err == nil {
-			c.Lines, err = anchor.Code(st.Git, a)
+	for _, r := range st.Anchors([]note.Note{n})[n.File] {
+		c, a := code{Anchor: r.Spec, From: 1}, r.Anchor
+		if r.Fallback && r.Base != "HEAD" {
+			c.ReadAt = r.Base[:12]
+		}
+		var err error
+		if r.Problem != "" && r.Base == "" {
+			err = errors.New(r.Problem)
+		} else {
+			c.Lines, err = anchor.Code(st.Git, r.Base, a)
 		}
 		switch {
 		case err != nil:
@@ -69,7 +75,11 @@ func show(st *memory.Store, args []string, w io.Writer) error {
 			fmt.Fprintf(w, "\n# %s: %s\n", c.Anchor, c.Error)
 			continue
 		}
-		fmt.Fprintf(w, "\n# %s\n", c.Anchor)
+		if c.ReadAt != "" {
+			fmt.Fprintf(w, "\n# %s (read at %s, the commit that added the note)\n", c.Anchor, c.ReadAt)
+		} else {
+			fmt.Fprintf(w, "\n# %s\n", c.Anchor)
+		}
 		for i, line := range c.Lines {
 			fmt.Fprintf(w, "%5d  %s\n", c.From+i, line)
 		}

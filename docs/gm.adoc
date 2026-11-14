@@ -288,7 +288,8 @@ of secret, never the text.
 
 *show --json*::
   The note's fields, *pruned_in* for a pruned note, and *code*: an array with
-  *anchor*, *from*, *lines*, and *error* when git cannot read the code.
+  *anchor*, *from*, *lines*, *read_at* when the base is not the anchor's own
+  commit, and *error* when git cannot read the code.
 
 *lint --json*::
   An object with *problems* (always present), *review* and *warnings*.

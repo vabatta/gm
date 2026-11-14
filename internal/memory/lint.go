@@ -21,12 +21,15 @@ type Report struct {
 
 // Lint checks every note. A problem is a file that does not parse, an id used
 // by more than one file, a supersedes entry that names no note on disk and no
-// note pruned in the history of HEAD, a live note
-// that breaks a rule in note.Problems, an anchor that anchor.Check finds
-// broken, or a topic with more than one live note. Superseded notes are
-// history, so of the per-note checks only the supersedes check applies to
-// them. With review, Lint also runs anchor.Changed on each sound anchor of a
-// live note.
+// note pruned in the history of HEAD, a live note that breaks a rule in
+// note.Problems, an anchor whose file anchor.Resolve finds gone, an anchor of
+// a note not yet on the default branch whose code changed after its base, or
+// a topic with more than one live note. A note on a branch is about to be
+// merged, and a squash merge would hide that its code changed, so there the
+// change is a problem rather than a review line. Superseded notes are history,
+// so of the per-note checks only the supersedes check applies to them. With
+// review, Lint also lists each anchor of a note on the default branch whose
+// code changed after its base.
 func (s *Store) Lint(review bool) Report {
 	ns, bad := s.Load()
 	rep := Report{Problems: bad}
@@ -43,7 +46,6 @@ func (s *Store) Lint(review bool) Report {
 	dead := Dead(ns)
 	heads := map[string][]string{}
 	var live []note.Note
-	var specs []string
 	var pruned map[string]bool // read from git only when a supersedes entry names no note on disk
 	for _, n := range ns {
 		for _, id := range n.Supersedes {
@@ -58,28 +60,38 @@ func (s *Store) Lint(review bool) Report {
 			continue
 		}
 		live = append(live, n)
-		specs = append(specs, n.At...)
 		if n.Topic != "" {
 			heads[n.Topic] = append(heads[n.Topic], n.ID)
 		}
 	}
-	broken, unseen := anchor.Check(s.Git, specs)
-	if unseen > 0 {
-		rep.Warnings = append(rep.Warnings, fmt.Sprintf("shallow clone: %d anchor commits are not here, so only their files were checked; fetch the full history to check them", unseen))
-	}
+	resolved := s.Anchors(live)
+	merged := s.onDefault()
+	onBranch := func(n note.Note) bool { return merged != nil && !merged[n.File] }
+	unseen := 0
 	for _, n := range live {
 		for _, p := range n.Problems() {
 			report("%s: %s", n.File, p)
 		}
-		for _, spec := range n.At {
-			if p := broken[spec]; p != "" {
-				report("%s: %s: %s", n.File, spec, p)
-			} else if a, err := anchor.Parse(spec); review && err == nil {
-				if anchor.Changed(s.Git, a) {
-					rep.Review = append(rep.Review, fmt.Sprintf("%s: %s changed since its commit; re-read the note", n.File, spec))
+		for _, r := range resolved[n.File] {
+			switch {
+			case r.Unseen:
+				unseen++
+				if r.Problem != "" {
+					report("%s: %s: %s", n.File, r.Spec, r.Problem)
 				}
+			case r.Problem != "":
+				report("%s: %s: %s", n.File, r.Spec, r.Problem)
+			case onBranch(n):
+				if anchor.Changed(s.Git, r.Base, r.Anchor) {
+					report("%s: %s: the anchored code changed after the note; save a revision anchored to the code as it is now", n.File, r.Spec)
+				}
+			case review && anchor.Changed(s.Git, r.Base, r.Anchor):
+				rep.Review = append(rep.Review, fmt.Sprintf("%s: %s changed since its base commit; re-read the note", n.File, r.Spec))
 			}
 		}
+	}
+	if unseen > 0 {
+		rep.Warnings = append(rep.Warnings, fmt.Sprintf("shallow clone: %d anchor commits are not here, so only their files were checked; fetch the full history to check them", unseen))
 	}
 	for _, t := range slices.Sorted(maps.Keys(heads)) {
 		if len(heads[t]) > 1 {

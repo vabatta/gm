@@ -2,26 +2,34 @@ package note
 
 import (
 	"regexp"
+	"strings"
 )
 
-// secrets are credential formats with a fixed prefix or shape. The
-// password-in-a-URL pattern skips a password that starts with $, <, { or *,
-// because that marks a placeholder such as $PASSWORD.
+// secrets are credential formats with a fixed prefix or shape. Every match
+// of a pattern contains one of its hints, so Secret runs a pattern only when a
+// hint is in the text. A substring test is far cheaper than the regular
+// expression, and most notes contain no hint at all. The password-in-a-URL
+// pattern skips a password that starts with $, <, { or *, because that marks
+// a placeholder such as $PASSWORD.
 var secrets = []struct {
-	kind string
-	re   *regexp.Regexp
+	kind  string
+	hints []string
+	re    *regexp.Regexp
 }{
-	{"private key", regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY`)},
-	{"AWS access key", regexp.MustCompile(`\b(?:AKIA|ASIA)[0-9A-Z]{16}\b`)},
-	{"GitHub token", regexp.MustCompile(`\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{22,})`)},
-	{"GitLab token", regexp.MustCompile(`\bglpat-[A-Za-z0-9_-]{20,}`)},
-	{"Slack token", regexp.MustCompile(`\bxox[abposr]-[A-Za-z0-9-]{10,}`)},
-	{"Google API key", regexp.MustCompile(`\bAIza[0-9A-Za-z_-]{35}`)},
-	{"Stripe key", regexp.MustCompile(`\b[rs]k_(?:live|test)_[0-9A-Za-z]{16,}`)},
-	{"API key", regexp.MustCompile(`\bsk-(?:ant-|proj-)?[A-Za-z0-9_-]{20,}`)},
-	{"JWT", regexp.MustCompile(`\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}`)},
-	{"password in a URL", regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9+.-]*://[^\s:/@]+:[^\s/@$<{*][^\s/@]{2,}@`)},
+	{"private key", []string{"PRIVATE KEY"}, regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY`)},
+	{"AWS access key", []string{"AKIA", "ASIA"}, regexp.MustCompile(`\b(?:AKIA|ASIA)[0-9A-Z]{16}\b`)},
+	{"GitHub token", []string{"ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_"}, regexp.MustCompile(`\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{22,})`)},
+	{"GitLab token", []string{"glpat-"}, regexp.MustCompile(`\bglpat-[A-Za-z0-9_-]{20,}`)},
+	{"Slack token", []string{"xox"}, regexp.MustCompile(`\bxox[abposr]-[A-Za-z0-9-]{10,}`)},
+	{"Google API key", []string{"AIza"}, regexp.MustCompile(`\bAIza[0-9A-Za-z_-]{35}`)},
+	{"Stripe key", []string{"k_live_", "k_test_"}, regexp.MustCompile(`\b[rs]k_(?:live|test)_[0-9A-Za-z]{16,}`)},
+	{"API key", []string{"sk-"}, regexp.MustCompile(`\bsk-(?:ant-|proj-)?[A-Za-z0-9_-]{20,}`)},
+	{"JWT", []string{"eyJ"}, regexp.MustCompile(`\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}`)},
+	{"password in a URL", []string{"://"}, regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9+.-]*://[^\s:/@]+:[^\s/@$<{*][^\s/@]{2,}@`)},
 }
+
+// assignedHints are the lowercase words that every match of assigned contains.
+var assignedHints = []string{"key", "secret", "token", "passw", "pwd", "credential"}
 
 // assigned matches a secret-like name given a value of 12 or more characters,
 // such as API_KEY=a1b2c3d4e5f6. Secret counts a match only when the value holds
@@ -36,9 +44,12 @@ var digit, letter = regexp.MustCompile(`[0-9]`), regexp.MustCompile(`[A-Za-z]`)
 // secret.
 func Secret(s string) (string, bool) {
 	for _, x := range secrets {
-		if x.re.MatchString(s) {
+		if containsAny(s, x.hints) && x.re.MatchString(s) {
 			return x.kind, true
 		}
+	}
+	if !containsAny(strings.ToLower(s), assignedHints) {
+		return "", false
 	}
 	for _, m := range assigned.FindAllStringSubmatch(s, -1) {
 		if digit.MatchString(m[1]) && letter.MatchString(m[1]) {
@@ -46,4 +57,14 @@ func Secret(s string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// containsAny reports whether s contains any of subs.
+func containsAny(s string, subs []string) bool {
+	for _, sub := range subs {
+		if strings.Contains(s, sub) {
+			return true
+		}
+	}
+	return false
 }

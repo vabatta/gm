@@ -274,8 +274,8 @@ func (s *Store) Lint(review bool) Report {
 			if p := broken[spec]; p != "" {
 				report("%s: %s: %s", n.File, spec, p)
 			} else if a, err := anchor.Parse(spec); review && err == nil {
-				if k := anchor.Changed(s.Git, a); k > 0 {
-					rep.Review = append(rep.Review, fmt.Sprintf("%s: %s changed in %d commits since; re-read the note", n.File, spec, k))
+				if anchor.Changed(s.Git, a) {
+					rep.Review = append(rep.Review, fmt.Sprintf("%s: %s changed since its commit; re-read the note", n.File, spec))
 				}
 			}
 		}

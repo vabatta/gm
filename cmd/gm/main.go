@@ -37,9 +37,15 @@ gm lint [--review] [--json]  exit 1 on broken notes; --review also lists anchors
 gm list [--by type|time] [-n N] [--all] [--json]   the catalogue or the log of live notes
 gm context [-n 15]       recent live notes for a session-start hook; silent outside a repo with notes
 gm import-engram FILE    one-time migration from an Engram JSON export
+gm --version
+
+The manual is gm(1); the note format is gm-note(5).
 
 Exit status: 0 ok, 1 lint found problems, 2 error.
 `
+
+// version is the gm version, set at build time with -ldflags "-X main.version=...".
+var version = "dev"
 
 func main() { os.Exit(run(os.Args[1:], ".", os.Stdout, os.Stderr)) }
 
@@ -52,6 +58,10 @@ func main() { os.Exit(run(os.Args[1:], ".", os.Stdout, os.Stderr)) }
 func run(args []string, dir string, stdout, stderr io.Writer) int {
 	if len(args) == 0 || args[0] == "help" || args[0] == "-h" || args[0] == "--help" {
 		fmt.Fprint(stdout, usage)
+		return 0
+	}
+	if args[0] == "--version" {
+		fmt.Fprintln(stdout, "gm", version)
 		return 0
 	}
 	cmd, args := args[0], args[1:]

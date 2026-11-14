@@ -253,17 +253,34 @@ func renamed(r *git.Repo, commit string) map[string]string {
 	return m
 }
 
-// Changed counts the commits after the anchor's commit that touched the
-// anchored code: git log -L for a line range, git log -- path for a whole file.
-// git log -L reads the line numbers in the file at HEAD, not at the anchor's
-// commit. After lines are added or removed above the range, it follows other
-// lines.
-func Changed(r *git.Repo, a Anchor) int {
-	var out string
-	if a.From > 0 {
-		out, _ = r.Run("log", "--format=%h", "--no-patch", fmt.Sprintf("-L%d,%d:%s", a.From, a.To, a.Path), a.Commit+"..HEAD")
-	} else {
-		out, _ = r.Run("log", "--format=%h", a.Commit+"..HEAD", "--", a.Path)
+// Changed reports whether the anchored code changed after the anchor's commit.
+//
+// For a line range it runs git blame --reverse from the anchor's commit to
+// HEAD. That names, for each anchored line, the last commit in which the line
+// still existed unchanged. The code changed when any of those commits is not
+// HEAD. blame follows each line forward from the anchor's commit, so lines that
+// moved because lines above them were added or removed are still tracked. For
+// a whole-file anchor, any later commit that touched the file counts.
+func Changed(r *git.Repo, a Anchor) bool {
+	if a.From == 0 {
+		out, _ := r.Run("log", "-1", "--format=%h", a.Commit+"..HEAD", "--", a.Path)
+		return out != ""
 	}
-	return len(strings.Fields(out))
+	head, err := r.Run("rev-parse", "HEAD")
+	if err != nil {
+		return false
+	}
+	out, err := r.Run("blame", "--reverse", "--porcelain", fmt.Sprintf("-L%d,%d", a.From, a.To), a.Commit+"..HEAD", "--", a.Path)
+	if err != nil {
+		return false
+	}
+	for line := range strings.SplitSeq(out, "\n") {
+		if sha, _, _ := strings.Cut(line, " "); blameHeader.MatchString(sha) && sha != head {
+			return true
+		}
+	}
+	return false
 }
+
+// blameHeader matches the commit id that starts each line header in git blame --porcelain output.
+var blameHeader = regexp.MustCompile(`^[0-9a-f]{40}$`)

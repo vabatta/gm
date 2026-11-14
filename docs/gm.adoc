@@ -253,18 +253,20 @@ then the path of the note file on the next line.
   only for title, keywords, topic and secrets);
 * an anchor of a live note whose file is gone at HEAD; when git sees the file
   as renamed since the base, the problem names the new path;
-* an anchor of a live note that is not yet on the default branch, whose code
-  changed after the base. The note describes code that no longer exists, and a
-  squash merge would hide that, so save a revision before merging. The default
-  branch is *origin/HEAD*, or else *main*, or else *master*;
+* a line-range anchor of a live note that is not yet on the default branch,
+  whose lines changed after the base. The note describes code that no longer
+  exists, and a squash merge would hide that, so save a revision before
+  merging. The default branch is *origin/HEAD*, or else *main*, or else
+  *master*. A whole-file anchor is about the file, which may change while the
+  note still holds, so its changes are review lines instead;
 * a topic with more than one live note.
 
 In a shallow clone, the commits of older anchors are missing. *lint* then
 checks only that their files exist at HEAD, and prints a *warning:* line that
 says how many commits it could not check. A warning does not fail *lint*.
 
-With *--review*, *lint* also prints a *review:* line for each anchor of a live
-note on the default branch whose code changed after the base. For a line
+With *--review*, *lint* also prints a *review:* line for each other anchor of a
+live note whose code changed after the base. For a line
 range, only changes to those lines count, followed from the base even when
 lines above them were added or removed. A review line does not fail *lint*.
 

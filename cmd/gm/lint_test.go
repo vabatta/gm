@@ -100,6 +100,15 @@ func TestLint(t *testing.T) {
 		r.git("merge", "-q", "--no-ff", "--no-edit", "feat")
 		has(t, r.ok("lint", "--review"), "review: ", ":fetch.go:3")
 	})
+	t.Run("on a branch lists a whole-file anchor whose file changed after the note, without failing", func(t *testing.T) {
+		r := newRepo(t)
+		r.git("checkout", "-qb", "feat")
+		r.fact("Fetch lives here", "--at", "fetch.go")
+		r.commit("note")
+		r.write("fetch.go", "package x\n\nfunc Fetch() { retry() }\n")
+		r.commit("change after the note")
+		has(t, r.ok("lint", "--review"), "review: ", ":fetch.go changed")
+	})
 	t.Run("in a shallow clone checks anchored files and warns about the commits it cannot see", func(t *testing.T) {
 		r := newRepo(t)
 		r.fact("Fetch lives here", "--at", "fetch.go")

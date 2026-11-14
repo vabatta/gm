@@ -31,7 +31,12 @@ index file.
 A note is never edited. A revision is a new note that names the notes it
 replaces with *--supersedes*. A note that some other note supersedes is
 history: it stays on disk, but *search*, *list* and *context* hide it. The notes
-that no note supersedes, minus retirements, are the _live_ notes.
+that no note supersedes are the _live_ notes.
+
+A retirement is a live note. It withdraws notes that have no successor, and its
+reason often says what replaced them, such as "flags now live in the config
+table". So *search*, *list* and *context* show retirements, and hide only the
+notes they retire.
 
 A note can point at the code it describes through _anchors_. An anchor names a
 file, and optionally a line range, at one commit. The commit never changes, so
@@ -125,8 +130,8 @@ error, because it usually means an unquoted flag value.
   For *search*, only notes of this type.
 
 *--all*::
-  For *search* and *list*, include superseded notes and retirements. *search*
-  marks them *(superseded)*.
+  For *search* and *list*, include superseded notes. *search* marks them
+  *(superseded)*.
 
 *--by* *type*|*time*::
   For *list*, group by type (the default) or print newest first without groups.
@@ -235,7 +240,7 @@ of secret, never the text.
 
 *search --json*::
   An array of results with *id*, *type*, *created*, *title*, *file*, *score*,
-  and *superseded* when true.
+  and *superseded* when another note supersedes the result.
 
 *show --json*::
   The note's fields, and *code*: an array with *anchor*, *from*, *lines*, and

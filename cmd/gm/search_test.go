@@ -44,6 +44,13 @@ func TestSearch(t *testing.T) {
 		r.fact("Proxy budget v2", "--supersedes", old)
 		has(t, r.ok("search", "proxy", "--all"), old, "(superseded)")
 	})
+	t.Run("finds a retirement without --all and does not mark it superseded", func(t *testing.T) {
+		r := newRepo(t)
+		r.ok("retire", r.fact("Flags in Flagsmith"), "--why", "Flags now live in the config table")
+		out := r.ok("search", "config", "table")
+		has(t, out, "retirement", "Retired: Flags in Flagsmith")
+		lacks(t, out, "(superseded)")
+	})
 	t.Run("--type matches only notes of that type", func(t *testing.T) {
 		r := newRepo(t)
 		r.fact("Cache facts")

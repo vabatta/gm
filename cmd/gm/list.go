@@ -27,7 +27,9 @@ func list(st *memory.Store, args []string, w io.Writer) error {
 		return errors.New("--by must be type or time")
 	}
 	ns, _ := st.Load()
-	if !*all {
+	if *all {
+		ns = st.All()
+	} else {
 		ns = memory.Live(ns)
 	}
 	slices.SortStableFunc(ns, func(a, b note.Note) int {

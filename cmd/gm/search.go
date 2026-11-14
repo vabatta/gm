@@ -31,7 +31,10 @@ func find(st *memory.Store, args []string, w io.Writer) error {
 	}
 	for _, h := range hits {
 		mark := ""
-		if h.Superseded {
+		switch {
+		case h.PrunedIn != "":
+			mark = "  (superseded, pruned in " + h.PrunedIn + ")"
+		case h.Superseded:
 			mark = "  (superseded)"
 		}
 		fmt.Fprintf(w, "%s  %s %s  %s%s\n    %s\n", h.ID, h.Type, day(h.Created), h.Title, mark, h.File)

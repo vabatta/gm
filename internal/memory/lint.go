@@ -20,7 +20,8 @@ type Report struct {
 }
 
 // Lint checks every note. A problem is a file that does not parse, an id used
-// by more than one file, a supersedes entry that names no note, a live note
+// by more than one file, a supersedes entry that names no note on disk and no
+// note pruned in the history of HEAD, a live note
 // that breaks a rule in note.Problems, an anchor that anchor.Check finds
 // broken, or a topic with more than one live note. Superseded notes are
 // history, so of the per-note checks only the supersedes check applies to
@@ -43,9 +44,13 @@ func (s *Store) Lint(review bool) Report {
 	heads := map[string][]string{}
 	var live []note.Note
 	var specs []string
+	var pruned map[string]bool // read from git only when a supersedes entry names no note on disk
 	for _, n := range ns {
 		for _, id := range n.Supersedes {
-			if files[id] == nil {
+			if files[id] == nil && pruned == nil {
+				pruned = s.prunedIDs()
+			}
+			if files[id] == nil && !pruned[id] {
 				report("%s: supersedes unknown note %s", n.File, id)
 			}
 		}

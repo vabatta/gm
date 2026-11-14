@@ -27,6 +27,7 @@ gm show ID [--json]      the note and the code its anchors point at, read from t
 gm lint [--review] [--json]  exit 1 on broken notes; --review also lists anchors whose code changed
 gm list [--by type|time] [-n N] [--all] [--json]   the catalogue or the log of live notes
 gm context [-n 15]       recent live notes for a session-start hook; silent outside a repo with notes
+gm prune                 delete superseded notes; git history keeps them for show and --all
 gm import-engram FILE    one-time migration from an Engram JSON export
 gm --version
 
@@ -90,5 +91,6 @@ var commands = map[string]func(st *memory.Store, args []string, w io.Writer) err
 	"show":          show,
 	"lint":          lint,
 	"list":          list,
+	"prune":         prune,
 	"import-engram": importEngram,
 }

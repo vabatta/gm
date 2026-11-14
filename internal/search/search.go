@@ -23,11 +23,12 @@ type Query struct {
 	Words string
 	Limit int    // the most hits Find returns
 	Type  string // when set, only notes of this type match
-	All   bool   // when set, superseded notes match too
+	All   bool   // when set, superseded notes match too, pruned ones included
 }
 
 // Hit is one search result. Superseded is true when another note supersedes
-// it. Score is the BM25 score, and a higher score ranks first.
+// it, and PrunedIn names the commit that pruned it, for a note read from git
+// history. Score is the BM25 score, and a higher score ranks first.
 type Hit struct {
 	ID         string  `json:"id"`
 	Type       string  `json:"type"`
@@ -35,6 +36,7 @@ type Hit struct {
 	Title      string  `json:"title"`
 	File       string  `json:"file"`
 	Superseded bool    `json:"superseded,omitempty"`
+	PrunedIn   string  `json:"pruned_in,omitempty"`
 	Score      float64 `json:"score"`
 }
 
@@ -80,6 +82,9 @@ func Find(st *memory.Store, q Query) ([]Hit, error) {
 		return nil, errors.New("empty query")
 	}
 	ns, _ := st.Load()
+	if q.All {
+		ns = st.All()
+	}
 	dead := memory.Dead(ns)
 	type doc struct {
 		hit Hit
@@ -97,7 +102,7 @@ func Find(st *memory.Store, q Query) ([]Hit, error) {
 			}
 		}
 		d := doc{hit: Hit{ID: n.ID, Type: n.Type, Created: n.Created, Title: n.Title, File: n.File,
-			Superseded: dead[n.ID]}, tf: map[string]float64{}}
+			Superseded: dead[n.ID], PrunedIn: n.PrunedIn}, tf: map[string]float64{}}
 		for _, col := range []struct {
 			text   string
 			weight float64

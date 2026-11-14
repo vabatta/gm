@@ -96,10 +96,16 @@ func Live(ns []note.Note) []note.Note {
 	return out
 }
 
-// Get returns the note with the given id.
+// Get returns the note with the given id, from disk or, when it was pruned,
+// from git history.
 func (s *Store) Get(id string) (note.Note, error) {
 	ns, _ := s.Load()
 	for _, n := range ns {
+		if n.ID == id {
+			return n, nil
+		}
+	}
+	for _, n := range s.Pruned() {
 		if n.ID == id {
 			return n, nil
 		}

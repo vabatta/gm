@@ -48,6 +48,9 @@ type Note struct {
 	// File is the note's path relative to the repository root. It is not
 	// written in the header, because the file's own path holds it.
 	File string `json:"file"`
+	// PrunedIn is the commit that deleted the note's file, for a note read
+	// back from git history after gm prune. It is not written in the header.
+	PrunedIn string `json:"pruned_in,omitempty"`
 }
 
 // Section is one heading of a note body and the gm save flag that fills it.

@@ -60,6 +60,9 @@ func show(st *memory.Store, args []string, w io.Writer) error {
 		}{n, codes})
 		return nil
 	}
+	if n.PrunedIn != "" {
+		fmt.Fprintf(w, "# pruned in %s\n", n.PrunedIn)
+	}
 	fmt.Fprint(w, n.Render())
 	for _, c := range codes {
 		if c.Error != "" {

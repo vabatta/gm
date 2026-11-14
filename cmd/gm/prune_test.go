@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -26,14 +27,18 @@ func TestPruning(t *testing.T) {
 		if strings.Count(out, "pruned .memory/notes/") != 2 || !strings.Contains(out, "pruned .memory/notes/"+old+"-") {
 			t.Fatalf("want the revised note and the retired note pruned, got\n%s", out)
 		}
-		if n := len(r.notes()); n != 3 {
-			t.Fatalf("want 3 note files left, got %d", n)
+		if n := len(r.notes()); n != 2 {
+			t.Fatalf("want the revision and the retirement left, got %d files", n)
 		}
 	})
 	t.Run("keeps live notes, retirements included", func(t *testing.T) {
 		r, _, revision, retirement := pruned(t)
 		r.ok("prune")
-		equal(t, ids(t, r.ok("list", "--by", "time", "--json")), []string{retirement, revision})
+		live := ids(t, r.ok("list", "--json"))
+		slices.Sort(live)
+		want := []string{retirement, revision}
+		slices.Sort(want)
+		equal(t, live, want)
 	})
 	t.Run("keeps a superseded note whose file is not committed as it is at HEAD", func(t *testing.T) {
 		r := newRepo(t)

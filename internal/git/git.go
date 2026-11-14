@@ -38,6 +38,13 @@ func (r *Repo) Run(args ...string) (string, error) { return r.Input("", args...)
 // Input is Run with stdin, for git commands that read their input from stdin,
 // such as cat-file --batch-check and rev-list --stdin.
 func (r *Repo) Input(stdin string, args ...string) (string, error) {
+	out, err := r.Raw(stdin, args...)
+	return strings.TrimRight(out, "\n"), err
+}
+
+// Raw is Input without trimming the output, for output that carries byte
+// counts, such as cat-file --batch.
+func (r *Repo) Raw(stdin string, args ...string) (string, error) {
 	cmd := exec.Command("git", append([]string{"--literal-pathspecs"}, args...)...)
 	cmd.Dir = r.Root
 	cmd.Stdin = strings.NewReader(stdin)
@@ -49,5 +56,5 @@ func (r *Repo) Input(stdin string, args ...string) (string, error) {
 		}
 		return "", fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
 	}
-	return strings.TrimRight(string(out), "\n"), nil
+	return string(out), nil
 }

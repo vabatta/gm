@@ -2,6 +2,8 @@
 
 gm keeps a project's memory in the repository it is about. Each note is a markdown file in `.memory/notes/`, committed with the code it describes and merged by git. There is no server, no database, and no index file.
 
+gm replaces each agent's built-in memory for project knowledge. Claude Code, Codex, and any other agent that runs gm read and write the same notes, so the project has one memory instead of one per tool. Personal preferences stay with each agent's own settings.
+
 ## Install gm
 
 To try gm without installing it, run it from the flake:

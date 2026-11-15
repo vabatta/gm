@@ -15,11 +15,11 @@ A note is evidence from the time it was written, not a fact about the code now. 
 
 ## What a memory is
 
-A memory is knowledge that a later agent needs and cannot get from the repository. The repository is the code, the tests, the docs, AGENTS.md, and `git log`. A memory is one of three things, and nothing else:
+A memory is knowledge about the project that a later agent needs and cannot get from the repository. The repository is the code, the tests, the docs, AGENTS.md, and `git log`. A memory is one of three things, and nothing else:
 
 - **Why, against the alternative.** Why the code is this way and not the obvious other way, with the evidence that ruled the other way out. Without it, a later agent "fixes" the code back.
 - **What failed.** A failure, its cause, and the rule that prevents it.
-- **What holds outside the repository.** How a tool, service, platform, or person behaves, observed or measured, that the code depends on.
+- **What holds outside the repository.** How a tool, service, or platform that the code depends on behaves, observed or measured.
 
 Test every note before you save it: if the note were deleted, would an agent that reads the code, the tests, the docs, and `git log` make a worse change? If not, do not save it.
 
@@ -29,7 +29,10 @@ Never save:
 - a summary of what a commit, a task, or a session did. The commit message holds it;
 - a number that a script in the repository reproduces, such as a benchmark timing;
 - a request without its reason. A standing rule from a person goes in AGENTS.md;
-- a plan, a task list, or work in progress.
+- a plan, a task list, or work in progress;
+- a personal preference or how one person likes to work.
+
+gm is the project's one memory for every agent. Save project knowledge with `gm save`, never in the agent's built-in memory, so every agent and every teammate reads the same notes.
 
 In a decision, the Decision section names the choice in one line. The Why and Rejected sections are the memory. Most tasks produce no note. One note a reader needs is worth more than ten they skip.
 

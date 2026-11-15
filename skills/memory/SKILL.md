@@ -5,7 +5,7 @@ description: "Saves and recalls project memory as note files committed in the re
 
 # Memory
 
-Project memory lives in the repository it is about, one note per file in `.memory/notes/`, or in `.agents/memory/notes/` when the repository has `.agents/memory/`. Git merges notes like code. `gm` writes, searches, and checks them. Run `gm help` for the commands, and `man gm` for every rule they apply. Add `--json` to `search`, `show`, `list`, and `lint` when you parse the output.
+Project memory lives in the repository it is about, one note per file in `.memory/notes/`, or in the `notes/` folder of the directory that `gm.dir` in `.gmconfig` names. `gm save` prints the path. Git merges notes like code. `gm` writes, searches, and checks them. Run `gm help` for the commands, and `man gm` for every rule they apply. Add `--json` to `search`, `show`, `list`, and `lint` when you parse the output.
 
 ## Recall before you work
 

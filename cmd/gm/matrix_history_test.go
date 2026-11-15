@@ -96,12 +96,13 @@ func onDisk(r *repo, id string) bool {
 	return slices.ContainsFunc(r.notes(), func(f string) bool { return strings.HasPrefix(filepath.Base(f), id+"-") })
 }
 
-// moveToAgents moves the notes from .memory to .agents/memory with git mv and
-// commits the move.
-func moveToAgents(r *repo) {
+// moveTo sets gm.dir in .gmconfig to dir, moves the notes there from .memory
+// with git mv, and commits the move.
+func moveTo(r *repo, dir string) {
 	r.t.Helper()
-	r.write(".agents/.keep", "")
-	r.git("mv", ".memory", ".agents/memory")
+	r.setDir(dir)
+	r.write(filepath.Join(filepath.Dir(dir), ".keep"), "")
+	r.git("mv", ".memory", dir)
 	r.commit("move notes")
 }
 
@@ -150,7 +151,7 @@ func localShapes() []histShape {
 			added := r.head()
 			r.git("branch", "-qD", "feat")
 			runPrep(prep, r, id)
-			moveToAgents(r)
+			moveTo(r, ".agents/memory")
 			return histScenario{r: r, id: id, file: "fetch.go", line: histRetry, anchor: a, added: added}
 		}},
 		{name: "rebase then fast-forward, branch deleted", base: baseAdded, build: func(t *testing.T, prep histPrep) histScenario {

@@ -17,7 +17,7 @@ import (
 // added it. --no-renames keeps git from reporting a note added next to a
 // similar deleted note as a rename, which would hide the addition.
 func (s *Store) added() map[string]string {
-	out, _ := s.Git.Run("log", "--no-renames", "--diff-filter=AD", "--name-status", "--format=commit %H", "--", historyPaths[0], historyPaths[1])
+	out, _ := s.Git.Run(append([]string{"log", "--no-renames", "--diff-filter=AD", "--name-status", "--format=commit %H", "--"}, s.historyPaths()...)...)
 	m := map[string]string{}
 	commit := ""
 	adds, dels := map[string]bool{}, map[string]bool{}
@@ -34,7 +34,7 @@ func (s *Store) added() map[string]string {
 		if c, ok := strings.CutPrefix(line, "commit "); ok {
 			flush()
 			commit = c
-		} else if status, file, ok := strings.Cut(line, "\t"); ok && slices.Contains(historyPaths, path.Dir(file)) {
+		} else if status, file, ok := strings.Cut(line, "\t"); ok && slices.Contains(s.historyPaths(), path.Dir(file)) {
 			if status == "A" {
 				adds[path.Base(file)] = true
 			} else {
@@ -108,7 +108,7 @@ func (s *Store) onDefault() map[string]bool {
 	if def == "" {
 		return nil
 	}
-	out, _ := s.Git.Run("ls-tree", "-r", "--name-only", def, "--", historyPaths[0], historyPaths[1])
+	out, _ := s.Git.Run(append([]string{"ls-tree", "-r", "--name-only", def, "--"}, s.historyPaths()...)...)
 	m := map[string]bool{}
 	for name := range strings.SplitSeq(out, "\n") {
 		m[path.Base(name)] = true

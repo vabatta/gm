@@ -1,4 +1,4 @@
-{ lib, buildGoModule, git, makeWrapper, asciidoctor, installShellFiles }:
+{ lib, buildGoModule, git, openssh, makeWrapper, asciidoctor, installShellFiles }:
 buildGoModule (finalAttrs: {
   pname = "gm";
   version = "0.1.0";
@@ -9,7 +9,9 @@ buildGoModule (finalAttrs: {
   vendorHash = null; # standard library only
   env.CGO_ENABLED = "0";
   ldflags = [ "-s" "-w" "-X main.version=${finalAttrs.version}" ];
-  nativeCheckInputs = [ git ]; # the specs run gm against real git repositories
+  # The specs run gm against real git repositories; ssh-keygen signs commits
+  # for the log.showSignature case of the git config matrix.
+  nativeCheckInputs = [ git openssh ];
   nativeBuildInputs = [ makeWrapper asciidoctor installShellFiles ];
   # The man pages and the skill ship with the binary, so all three always describe the same version.
   postInstall = ''

@@ -86,10 +86,20 @@ func (s *Store) Lint(review bool) Report {
 				}
 			case r.Problem != "":
 				report("%s: %s: %s", n.File, r.Spec, r.Problem)
-			case onBranch(n) && r.Anchor.From > 0 && anchor.Changed(s.Git, r.Base, r.Anchor):
-				report("%s: %s: the anchored code changed after the note; save a revision anchored to the code as it is now", n.File, r.Spec)
-			case review && anchor.Changed(s.Git, r.Base, r.Anchor):
-				rep.Review = append(rep.Review, fmt.Sprintf("%s: %s changed since its base commit; re-read the note", n.File, r.Spec))
+			default:
+				branchRule := onBranch(n) && r.Anchor.From > 0
+				if !branchRule && !review {
+					continue
+				}
+				changed, err := anchor.Changed(s.Git, r.Base, r.Anchor)
+				switch {
+				case err != nil:
+					rep.Warnings = append(rep.Warnings, fmt.Sprintf("%s: %s: could not check whether the code changed: %v", n.File, r.Spec, err))
+				case changed && branchRule:
+					report("%s: %s: the anchored code changed after the note; save a revision anchored to the code as it is now", n.File, r.Spec)
+				case changed:
+					rep.Review = append(rep.Review, fmt.Sprintf("%s: %s changed since its base commit; re-read the note", n.File, r.Spec))
+				}
 			}
 		}
 	}

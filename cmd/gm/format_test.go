@@ -1,6 +1,7 @@
 package main
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -29,6 +30,19 @@ func TestNoteFormat(t *testing.T) {
 			t.Fatalf("want lint to exit 1, got %s", res)
 		}
 		has(t, res.stdout, "20200101T000000Z-aaaaaa", "note format 2 needs a newer gm")
+	})
+	t.Run("names the file after the id and the title in lowercase, cut to 48 characters", func(t *testing.T) {
+		r := newRepo(t)
+		id := r.fact("Fetch Retries With Exponential Backoff And Jitter On Every Call")
+		equal(t, []string{filepath.Base(r.notes()[0])}, []string{id + "-fetch-retries-with-exponential-backoff-and-jitte.md"})
+	})
+	t.Run("ends an anchor with one more : when its path ends in a line-range shape", func(t *testing.T) {
+		r := newRepo(t)
+		r.write("log:12", "one\ntwo\n")
+		r.commit("odd name")
+		id := r.fact("Odd", "--at", "log:12")
+		has(t, r.read(strings.TrimPrefix(r.notes()[0], r.dir+"/")), "at: ["+r.head()+":log:12:]")
+		has(t, r.ok("show", id), "\n# "+r.head()+":log:12:\n", "one")
 	})
 	t.Run("writes a list as a JSON array when an item holds a comma", func(t *testing.T) {
 		r := newRepo(t)

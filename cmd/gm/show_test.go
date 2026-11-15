@@ -55,6 +55,13 @@ func TestShow(t *testing.T) {
 		clone.git("clone", "-q", "--depth", "1", "file://"+r.dir, ".")
 		has(t, clone.ok("show", id), "(read at HEAD, because this shallow clone lacks commit ")
 	})
+	t.Run("--json reports read_at after a squash merge, and error when git cannot read the code", func(t *testing.T) {
+		clone, id := merged(t, "squash")
+		has(t, clone.ok("show", id, "--json"), `"read_at": "`+clone.head()+`"`)
+		r := newRepo(t)
+		r.note("20200101T000000Z-aaaaaa", "type: fact\ntitle: \"Gone\"\nkeywords: a b c\nat: [deadbeefdead:gone.go]\ncreated: 2020-01-01T00:00:00Z\n", "## Fact\nf\n\n## Evidence\ne\n")
+		has(t, r.ok("show", "20200101T000000Z-aaaaaa", "--json"), `"error": "`)
+	})
 	t.Run("exits 2 for an unknown id", func(t *testing.T) {
 		refused(t, newRepo(t).gm("show", "20200101T000000Z-000000"), "no note")
 	})

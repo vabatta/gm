@@ -85,8 +85,6 @@ func NewID(t time.Time) string {
 }
 
 // nonSlug matches each run of characters that FileName turns into a hyphen.
-// nonSlug matches each run of characters that FileName turns into a hyphen.
-// nonSlug matches each run of characters that FileName turns into a hyphen.
 var nonSlug = regexp.MustCompile(`[^a-z0-9]+`)
 
 // FileName returns the note's file name. The name is the id, a hyphen, and the

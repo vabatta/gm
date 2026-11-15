@@ -68,7 +68,10 @@ func Resolve(r *git.Repo, targets []Target) []Resolved {
 	}
 	full := map[string]string{} // object asked for -> its full id; no entry when git has no such object
 	for i, obj := range objects {
-		if f := strings.Fields(lines[i]); len(f) == 3 {
+		// A hit is "<id> <type> <size>". A miss is "<object> missing", and an
+		// object name with a space in its path also splits into three fields,
+		// so the type is what tells them apart.
+		if f := strings.Fields(lines[i]); len(f) == 3 && objectTypes[f[1]] {
 			full[obj] = f[0]
 		}
 	}
@@ -116,6 +119,9 @@ func Resolve(r *git.Repo, targets []Target) []Resolved {
 	}
 	return res
 }
+
+// objectTypes are the object types git cat-file --batch-check prints for a hit.
+var objectTypes = map[string]bool{"commit": true, "tree": true, "blob": true, "tag": true}
 
 // renamed maps old paths to new paths for the files that git diff -M finds
 // renamed between commit and HEAD. It skips copies, because after a copy the

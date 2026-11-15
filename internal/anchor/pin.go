@@ -15,7 +15,8 @@ import (
 // ":" needs no escaping. Otherwise a final ":N" or ":N-M" is the line range.
 // Pin refuses a file that is not committed at HEAD or that has uncommitted
 // changes, because the anchor must show the code that the note describes. It
-// also refuses an empty path and a range past the end of the file.
+// also refuses an empty path, a directory, and a range past the end of the
+// file.
 func Pin(r *git.Repo, spec string) (Anchor, error) {
 	head, err := r.Run("rev-parse", "--short=12", "HEAD")
 	if err != nil {
@@ -25,16 +26,20 @@ func Pin(r *git.Repo, spec string) (Anchor, error) {
 	if strings.Trim(a.Path, "/.") == "" {
 		return Anchor{}, fmt.Errorf("at %q: an anchor needs a path from the repository root", spec)
 	}
-	if _, err := r.Run("cat-file", "-e", "HEAD:"+a.Path); err != nil {
+	typ, err := r.Run("cat-file", "-t", "HEAD:"+a.Path)
+	if err != nil {
 		if loc := rangeRe.FindStringIndex(a.Path); loc != nil {
 			if a.From, a.To, err = Lines(a.Path[loc[0]+1:]); err != nil {
 				return Anchor{}, fmt.Errorf("at %s: %v", spec, err)
 			}
 			a.Path = a.Path[:loc[0]]
 		}
-		if _, err := r.Run("cat-file", "-e", "HEAD:"+a.Path); err != nil {
+		if typ, err = r.Run("cat-file", "-t", "HEAD:"+a.Path); err != nil {
 			return Anchor{}, fmt.Errorf("at %s: the file is not committed at HEAD", spec)
 		}
+	}
+	if typ != "blob" {
+		return Anchor{}, fmt.Errorf("at %s: the path names a directory, not a file", spec)
 	}
 	if dirty, _ := r.Run("status", "--porcelain", "--", a.Path); dirty != "" {
 		return Anchor{}, fmt.Errorf("at %s: the file has uncommitted changes; commit the code first, then save the note", spec)

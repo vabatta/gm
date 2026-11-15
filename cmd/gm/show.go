@@ -19,11 +19,14 @@ type code struct {
 	From   int      `json:"from,omitempty"`
 	Lines  []string `json:"lines,omitempty"`
 	Error  string   `json:"error,omitempty"`
+	why    string   // why the base is ReadAt, for the heading
 }
 
 // show runs gm show. It prints the note file, then the code of each anchor,
-// read at the base commit that Store.Anchors picks. For a line range it prints
-// those lines. For a whole file it prints the first 40 lines.
+// read at the base commit that Store.Anchors picks. When the base is not the
+// anchor's own commit, the heading names the base and why. For a line range it
+// prints those lines, or the reason when the file at the base ends before them.
+// For a whole file it prints the first 40 lines.
 func show(st *memory.Store, args []string, w io.Writer) error {
 	fs := flags("show")
 	asJSON := jsonFlag(fs)
@@ -40,8 +43,13 @@ func show(st *memory.Store, args []string, w io.Writer) error {
 	var codes []code
 	for _, r := range st.Anchors([]note.Note{n})[n.File] {
 		c, a := code{Anchor: r.Spec, From: 1}, r.Anchor
-		if r.Fallback && r.Base != "HEAD" {
-			c.ReadAt = r.Base[:12]
+		switch {
+		case r.Unseen:
+			c.ReadAt, c.why = "HEAD", "because this shallow clone lacks commit "+a.Commit
+		case r.Fallback && r.Base == "HEAD":
+			c.ReadAt, c.why = "HEAD", "because the note is not committed yet"
+		case r.Fallback:
+			c.ReadAt, c.why = r.Base[:12], "the commit that added the note"
 		}
 		var err error
 		if r.Problem != "" && r.Base == "" {
@@ -52,6 +60,8 @@ func show(st *memory.Store, args []string, w io.Writer) error {
 		switch {
 		case err != nil:
 			c.Error = err.Error()
+		case a.From > len(c.Lines):
+			c.Error, c.Lines = fmt.Sprintf("the file has %d lines at %s, fewer than the anchor names", len(c.Lines), r.Base[:min(12, len(r.Base))]), nil
 		case a.From > 0:
 			c.From, c.Lines = a.From, c.Lines[a.From-1:]
 		case len(c.Lines) > 40:
@@ -76,7 +86,7 @@ func show(st *memory.Store, args []string, w io.Writer) error {
 			continue
 		}
 		if c.ReadAt != "" {
-			fmt.Fprintf(w, "\n# %s (read at %s, the commit that added the note)\n", c.Anchor, c.ReadAt)
+			fmt.Fprintf(w, "\n# %s (read at %s, %s)\n", c.Anchor, c.ReadAt, c.why)
 		} else {
 			fmt.Fprintf(w, "\n# %s\n", c.Anchor)
 		}

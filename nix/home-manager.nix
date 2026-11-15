@@ -1,4 +1,3 @@
-# Installs gm and links the memory skill for Claude Code, Codex, or both.
 self:
 { config, lib, pkgs, ... }:
 let

@@ -1,4 +1,3 @@
-# gm: project memory kept as note files in the repository, merged by git.
 { lib, buildGoModule, git, makeWrapper, asciidoctor, installShellFiles }:
 buildGoModule (finalAttrs: {
   pname = "gm";

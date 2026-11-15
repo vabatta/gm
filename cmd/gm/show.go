@@ -19,7 +19,7 @@ type code struct {
 	From   int      `json:"from,omitempty"`
 	Lines  []string `json:"lines,omitempty"`
 	Error  string   `json:"error,omitempty"`
-	why    string   // why the base is ReadAt, for the heading
+	why    string
 }
 
 // show runs gm show. It prints the note file, then the code of each anchor,

@@ -25,8 +25,8 @@ type Anchor struct {
 }
 
 var (
-	commitRe = regexp.MustCompile(`^[0-9a-f]{7,40}$`)   // an abbreviated or full commit id
-	rangeRe  = regexp.MustCompile(`:[0-9]+(-[0-9]+)?$`) // a final :N or :N-M
+	commitRe = regexp.MustCompile(`^[0-9a-f]{7,40}$`)
+	rangeRe  = regexp.MustCompile(`:[0-9]+(-[0-9]+)?$`)
 )
 
 // String returns the anchor in the form Parse reads.

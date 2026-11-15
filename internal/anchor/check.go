@@ -82,7 +82,7 @@ func Resolve(r *git.Repo, targets []Target) []Resolved {
 		}
 	}
 	stdin.WriteString("^HEAD\n")
-	unreached := map[string]bool{} // anchor commits that HEAD does not contain
+	unreached := map[string]bool{}
 	out, err = r.Input(stdin.String(), "rev-list", "--stdin")
 	for _, id := range strings.Fields(out) {
 		unreached[id] = true

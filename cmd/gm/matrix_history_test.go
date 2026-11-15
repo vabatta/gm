@@ -647,20 +647,31 @@ func histCells(sh histShape) []histCell {
 			has(t, search, s.id, "pruned in "+prunedIn)
 			has(t, list, s.id)
 		}},
-		{"after a revision and prune, lint accepts the supersedes entry", func(t *testing.T, sh histShape) {
+		{"after a revision and prune, lint accepts the supersedes entry, or warns where the clone lacks its history", func(t *testing.T, sh histShape) {
 			s, _ := prunedScenario(t, sh)
 			res := s.r.gm("lint")
 			lacks(t, res.stdout, "supersedes unknown note")
 			if res.code != 0 {
 				t.Fatalf("want exit 0, got %s", res)
 			}
+			if sh.lostHistory {
+				has(t, res.stdout, "warning: shallow clone")
+			}
 		}},
-		{"after a revision and prune, save --supersedes accepts the pruned id", func(t *testing.T, sh histShape) {
+		{"after a revision and prune, save --supersedes accepts the pruned id, or refuses where the clone lacks its history", func(t *testing.T, sh histShape) {
 			s, _ := prunedScenario(t, sh)
+			if sh.lostHistory {
+				refused(t, s.r.gm("save", "fact", "--title", "Fetch retries, revised again", "--keywords", "fetch retry backoff", "--fact", "f", "--evidence", "e", "--supersedes", s.id), "shallow clone", "fetch the full history")
+				return
+			}
 			s.r.fact("Fetch retries, revised again", "--supersedes", s.id)
 		}},
-		{"after a revision and prune, retire accepts the pruned id", func(t *testing.T, sh histShape) {
+		{"after a revision and prune, retire accepts the pruned id, or refuses where the clone lacks its history", func(t *testing.T, sh histShape) {
 			s, _ := prunedScenario(t, sh)
+			if sh.lostHistory {
+				refused(t, s.r.gm("retire", s.id, "--why", "Fetch no longer retries"), "shallow clone", "fetch the full history")
+				return
+			}
 			s.r.ok("retire", s.id, "--why", "Fetch no longer retries")
 		}},
 	}

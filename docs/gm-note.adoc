@@ -49,7 +49,7 @@ A reader ignores keys it does not know.
   note. *search*, *show* and *list* then leave the note out, and *gm lint*
   fails with _FILE_*: note format* _N_ *needs a newer gm*.
 
-*gm* writes a list as *[a, b]*. When an item holds a comma, a bracket, a quote,
+*gm* writes a list as *[a, b]*. When an item holds a comma, a bracket, a double quote,
 or a leading or trailing space, *gm* writes the whole list as a JSON array
 instead.
 

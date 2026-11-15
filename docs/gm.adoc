@@ -228,8 +228,11 @@ commit that deletes a note and adds a similar one, and a merge commit that
 deletes a note, still count as the commit that pruned the note.
 
 Branches merge as before. When one branch deletes a note file and the other
-leaves it unchanged, the merge deletes it. A shallow clone lacks the history that holds
-pruned notes, so there *show* cannot find them and *--all* leaves them out.
+leaves it unchanged, the merge deletes it. A shallow clone lacks the history
+that holds pruned notes. There *show* cannot find them, *--all* leaves them
+out, *save --supersedes* and *retire* refuse their ids and say to fetch the
+full history, and *lint* prints a *warning:* line instead of failing on a
+*supersedes* entry it cannot find.
 
 == SEARCH
 

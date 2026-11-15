@@ -6,7 +6,9 @@ on:
     tags: ['v*']
 jobs:
   flake-check:
-    runs-on: ubuntu-slim
+    # The specs spawn thousands of git processes, so they are bound by cores:
+    # 1 vCPU (ubuntu-slim) takes minutes, 4 vCPUs (ubuntu-latest) seconds.
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

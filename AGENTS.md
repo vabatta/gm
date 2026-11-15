@@ -16,4 +16,5 @@ gm keeps project memory as note files in the repository they concern, merged by 
 1. Work in the dev shell: `direnv allow` once, or `nix develop`.
 2. Done means `nix flake check` passes. It builds the binary and runs `go test ./...` in the sandbox.
 3. Before handing over, run `gm lint` in this repository.
-4. Measure a change to search, lint, show or pruning with `bench/run.sh 10000 result/bin/gm` before and after, and quote both in the pull request. The benchmark generates a corpus with known answers, so it reports speed and whether search still finds the answer.
+4. Write commit messages and pull request titles as Conventional Commits with no scope, such as `fix: refuse a negative -n`. `.gitcommitizen` lists the types. CI checks the pull request title, because a squash merge makes it the commit message. To check one locally, pipe it to `nix shell github:proventuslabs/scriptorium#cz -c cz lint`.
+5. Measure a change to search, lint, show or pruning with `bench/run.sh 10000 result/bin/gm` before and after, and quote both in the pull request. The benchmark generates a corpus with known answers, so it reports speed and whether search still finds the answer.

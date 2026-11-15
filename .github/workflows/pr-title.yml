@@ -1,0 +1,21 @@
+name: pr-title
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+permissions:
+  contents: read
+jobs:
+  conventional:
+    runs-on: ubuntu-latest
+    env:
+      # The title reaches the shell through the environment, never through
+      # expression interpolation in the script, so a title cannot inject code.
+      PR_TITLE: ${{ github.event.pull_request.title }}
+      # cz from scriptorium, pinned to the commit this config was tested with.
+      CZ: github:proventuslabs/scriptorium/db7be54d3f1b10f77e96f20694f4bcf9799de19e#cz
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: cachix/install-nix-action@3dc140bfc76c49fbd4dd958429132e3746bcb086 # v31.11.5
+      # A squash merge turns the title into the commit message, so the title
+      # must follow .gitcommitizen: a type, no scope.
+      - run: printf '%s\n' "$PR_TITLE" | nix shell "$CZ" -c cz --no-breaking-footer lint

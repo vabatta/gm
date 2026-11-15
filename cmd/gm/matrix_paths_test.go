@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -62,7 +63,7 @@ func pathCases() []pathCase {
 		plain("*.go", "*.go", "go"),
 		plain("a?.go", "a?.go", "go"),
 		plain("café.go NFC", "café.go", "café"),
-		plain("café.go NFD", "café.go", "café"),
+		plain("café.go NFD", "café.go", "go"),
 		plain("emoji", "\U0001F642.go", "go"),
 		plain("CJK", "日本語.go", "日本語"),
 		plain("200 characters", strings.Repeat("n", 197)+".go", "go"),
@@ -162,16 +163,26 @@ func (c pathCase) specs() []string {
 	return []string{c.spec, c.spec + ":" + c.rng}
 }
 
-// anchors are the anchors gm-note(5) says save writes for specs at head.
-func (c pathCase) anchors(head string) []string {
-	whole := head + ":" + c.path
-	if strings.HasSuffix(c.path, ":") || lineShape.MatchString(c.path) {
+// anchors are the anchors gm-note(5) says save writes for specs at rev, with
+// the path as git spells it there, as gm(1) says: macOS git stores an NFD
+// name in NFC form.
+func (c pathCase) anchors(r *repo, rev string) []string {
+	head := r.git("rev-parse", "--short=12", rev)
+	cmd := exec.Command("git", "ls-tree", "-z", "--name-only", rev, "--", ":(literal)"+c.path)
+	cmd.Dir, cmd.Env = r.dir, env
+	out, err := cmd.Output()
+	if err != nil {
+		r.t.Fatalf("git ls-tree %s: %v", c.path, err)
+	}
+	path := strings.TrimSuffix(string(out), "\x00")
+	whole := head + ":" + path
+	if strings.HasSuffix(path, ":") || lineShape.MatchString(path) {
 		whole += ":"
 	}
 	if c.rng == "" {
 		return []string{whole}
 	}
-	return []string{whole, head + ":" + c.path + ":" + c.rng}
+	return []string{whole, head + ":" + path + ":" + c.rng}
 }
 
 // rangeLines are the lines the line-range anchor covers.
@@ -271,7 +282,7 @@ func TestMatrixPaths(t *testing.T) {
 			for i, spec := range c.specs() {
 				r := c.setup(t)
 				id := c.save(r, "Anchored note", []string{spec})
-				anchor := c.anchors(r.head())[i]
+				anchor := c.anchors(r, "HEAD")[i]
 				has(t, r.read(strings.TrimPrefix(r.notes()[0], r.dir+"/")), "\n"+headerAt(anchor)+"\n")
 				var got shownJSON
 				if err := json.Unmarshal([]byte(r.ok("show", id, "--json")), &got); err != nil {
@@ -287,7 +298,7 @@ func TestMatrixPaths(t *testing.T) {
 			if c.crlf {
 				out = strings.ReplaceAll(out, "\r", "")
 			}
-			as := c.anchors(r.head())
+			as := c.anchors(r, "HEAD")
 			has(t, out, shownCode(as[0], 1, c.lines))
 			if len(as) > 1 {
 				has(t, out, shownCode(as[1], 1, c.rangeLines()))
@@ -300,7 +311,7 @@ func TestMatrixPaths(t *testing.T) {
 			if err := json.Unmarshal([]byte(r.ok("show", id, "--json")), &got); err != nil {
 				t.Fatal(err)
 			}
-			as := c.anchors(r.head())
+			as := c.anchors(r, "HEAD")
 			equal(t, got.At, as)
 			if len(got.Code) != len(as) {
 				t.Fatalf("want %d code entries, got %+v", len(as), got.Code)
@@ -346,7 +357,7 @@ func TestMatrixPaths(t *testing.T) {
 			r.commit("note")
 			c.change(t, r)
 			out := r.ok("lint", "--review")
-			for _, a := range c.anchors(r.git("rev-parse", "--short=12", "HEAD~2")) {
+			for _, a := range c.anchors(r, "HEAD~2") {
 				has(t, lineWith(t, out, a+" changed"), "review: ")
 			}
 		}},
@@ -357,7 +368,7 @@ func TestMatrixPaths(t *testing.T) {
 			r.git("--literal-pathspecs", "rm", "-q", "--", c.file)
 			r.commit("remove")
 			out := lintFails(t, r)
-			for _, a := range c.anchors(r.git("rev-parse", "--short=12", "HEAD~2")) {
+			for _, a := range c.anchors(r, "HEAD~2") {
 				has(t, out, a+": the file no longer exists at HEAD")
 			}
 		}},
@@ -368,7 +379,7 @@ func TestMatrixPaths(t *testing.T) {
 			r.git("--literal-pathspecs", "mv", "--", c.file, "moved.go")
 			r.commit("move")
 			out := lintFails(t, r)
-			for _, a := range c.anchors(r.git("rev-parse", "--short=12", "HEAD~2")) {
+			for _, a := range c.anchors(r, "HEAD~2") {
 				has(t, lineWith(t, out, a+": "), "moved.go")
 			}
 		}},
@@ -383,7 +394,7 @@ func TestMatrixPaths(t *testing.T) {
 			c.save(r, "Anchored note revised", []string{c.spec}, "--supersedes", old)
 			has(t, r.ok("prune"), "kept .memory/notes/"+old+"-")
 			r.commit("notes")
-			anchor := c.anchors(r.git("rev-parse", "--short=12", "HEAD~1"))[0]
+			anchor := c.anchors(r, "HEAD~1")[0]
 			out := r.ok("prune")
 			has(t, out, "pruned .memory/notes/"+old+"-")
 			if len(r.notes()) != 1 {

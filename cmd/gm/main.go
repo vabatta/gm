@@ -28,7 +28,7 @@ gm lint [--review] [--json]  exit 1 on broken notes; --review also lists anchors
 gm list [--by type|time] [-n N] [--all] [--json]   the catalogue or the log of live notes
 gm context [-n 15]       recent live notes for a session-start hook; silent outside a repo with notes
 gm prune                 delete superseded notes; git history keeps them for show and --all
-gm import-engram FILE    one-time migration from an Engram JSON export
+gm import SOURCE FILE    write the memories exported from another tool; SOURCE: engram
 gm --version
 
 The manual is gm(1); the note format is gm-note(5).

@@ -17,7 +17,7 @@ gm - keep project memory as note files in the repository, merged by git
 *gm list* [*--by* *type*|*time*] [*-n* _N_] [*--all*] [*--json*] +
 *gm context* [*-n* _N_] +
 *gm prune* +
-*gm import-engram* _FILE_ +
+*gm import* _SOURCE_ _FILE_ +
 *gm help* | *-h* | *--help* +
 *gm --version*
 
@@ -95,9 +95,9 @@ error, because it usually means an unquoted flag value.
   Delete the files of the notes that another note supersedes, and print the
   path of each. See *PRUNING*.
 
-*import-engram* _FILE_::
-  Write one note for each observation in an Engram JSON export, made with
-  *engram export* _FILE_ *--project* _NAME_. See *IMPORT*.
+*import* _SOURCE_ _FILE_::
+  Write one note for each memory in _FILE_, an export from another memory
+  tool. _SOURCE_ names the tool; see *IMPORT* for the sources gm reads.
 
 *help*, *-h*, *--help*::
   Print a summary of the commands.
@@ -272,14 +272,28 @@ lines above them were added or removed. A review line does not fail *lint*.
 
 == IMPORT
 
-*import-engram* writes one note per observation. Each note gets a new id. The
-Engram types *decision*, *learning* and *bugfix* become *decision*, *lesson* and
-*lesson*. Every other type becomes *fact*. Only the *supersedes* relations that
-Engram marked _judged_ are kept. A title longer than 120 characters, or on
-several lines, is shortened, and the full title opens the body. The *migrated*
-header records the Engram id and type. An observation whose text looks like a
-credential is not imported. *import-engram* prints its Engram id and the kind
-of secret, never the text.
+*import* reads _FILE_ with the reader for _SOURCE_, then writes the memories
+the same way for every source:
+
+* each memory becomes one note with a new id, made from its creation time;
+* a memory that replaces another one supersedes it, when both are imported;
+* a title longer than 120 characters, or on several lines, is shortened, and
+  the full title opens the body;
+* spaces in a topic become hyphens;
+* the *migrated* header records the source, the memory's id there and its type
+  there, and exempts the note from the section templates;
+* a memory whose text looks like a credential is not imported. *import* prints
+  its id and the kind of secret, never the text.
+
+An unknown _SOURCE_ is an error that lists the sources gm reads.
+
+The sources:
+
+*engram*::
+  A JSON export made with *engram export* _FILE_ *--project* _NAME_. Each
+  observation is a memory. The types *decision*, *learning* and *bugfix*
+  become *decision*, *lesson* and *lesson*, and every other type becomes
+  *fact*. Only the *supersedes* relations that Engram marked _judged_ count.
 
 == JSON OUTPUT
 

@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestImportEngram(t *testing.T) {
+func TestImport(t *testing.T) {
 	export := func(r *repo, observations, relations string) string {
 		file := filepath.Join(t.TempDir(), "export.json")
 		if err := os.WriteFile(file, []byte(`{"observations": [`+observations+`], "relations": [`+relations+`]}`), 0o644); err != nil {
@@ -23,7 +23,7 @@ func TestImportEngram(t *testing.T) {
 	t.Run("writes one note per observation with a new id, a mapped type and a migrated header", func(t *testing.T) {
 		r := newRepo(t)
 		file := export(r, obs("obs-1", "decision", "A", "a")+","+obs("obs-2", "learning", "B", "b")+","+obs("obs-3", "bugfix", "C", "c")+","+obs("obs-4", "discovery", "D", "d"), "")
-		has(t, r.ok("import-engram", file), "imported 4 notes")
+		has(t, r.ok("import", "engram", file), "imported 4 notes")
 		var all string
 		for _, f := range r.notes() {
 			has(t, filepath.Base(f), "20261113T100000Z-")
@@ -38,24 +38,33 @@ func TestImportEngram(t *testing.T) {
 			`{"source_id": "obs-2", "target_id": "obs-1", "relation": "supersedes", "judgment_status": "judged"},
 			 {"source_id": "obs-3", "target_id": "obs-2", "relation": "supersedes", "judgment_status": "pending"},
 			 {"source_id": "obs-3", "target_id": "obs-1", "relation": "compatible", "judgment_status": "judged"}`)
-		has(t, r.ok("import-engram", file), "1 supersedes links")
+		has(t, r.ok("import", "engram", file), "1 supersedes links")
 		has(t, r.ok("list", "--by", "time"), "New", "Other")
 		lacks(t, r.ok("list"), "Old")
 	})
 	t.Run("shortens a long title and opens the body with the full title", func(t *testing.T) {
 		r := newRepo(t)
 		long := strings.TrimSpace(strings.Repeat("very long title ", 10))
-		r.ok("import-engram", export(r, obs("obs-1", "decision", long, "body"), ""))
+		r.ok("import", "engram", export(r, obs("obs-1", "decision", long, "body"), ""))
 		content := r.read(strings.TrimPrefix(r.notes()[0], r.dir+"/"))
 		has(t, content, "...\"\n", "---\n"+long+"\n\nbody\n")
 	})
 	t.Run("skips an observation that looks like a credential and prints its id and kind, never the text", func(t *testing.T) {
 		r := newRepo(t)
-		out := r.ok("import-engram", export(r, obs("obs-1", "decision", "Leaky", "AKIAABCDEFGHIJKLMNOP")+","+obs("obs-2", "decision", "Fine", "f"), ""))
+		out := r.ok("import", "engram", export(r, obs("obs-1", "decision", "Leaky", "AKIAABCDEFGHIJKLMNOP")+","+obs("obs-2", "decision", "Fine", "f"), ""))
 		has(t, out, "imported 1 notes", "obs-1 (AWS access key)")
 		lacks(t, out, "AKIAABCDEFGHIJKLMNOP")
 		if len(r.notes()) != 1 {
 			t.Fatal("want only the clean observation written")
 		}
+	})
+	t.Run("turns spaces in a topic into hyphens", func(t *testing.T) {
+		r := newRepo(t)
+		b, _ := json.Marshal(map[string]string{"sync_id": "obs-1", "type": "decision", "title": "T", "content": "c", "topic_key": "decision/cache store", "created_at": "2026-11-13 10:00:00"})
+		r.ok("import", "engram", export(r, string(b), ""))
+		has(t, r.read(strings.TrimPrefix(r.notes()[0], r.dir+"/")), "topic: decision/cache-store\n")
+	})
+	t.Run("an unknown source exits 2 and lists the sources gm reads", func(t *testing.T) {
+		refused(t, newRepo(t).gm("import", "mem0", "export.json"), "unknown source \"mem0\"", "engram")
 	})
 }

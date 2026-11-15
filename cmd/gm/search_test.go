@@ -69,6 +69,11 @@ func TestSearch(t *testing.T) {
 			t.Fatalf("want 2, got %d", n)
 		}
 	})
+	t.Run("a negative -n exits 2", func(t *testing.T) {
+		r := newRepo(t)
+		r.fact("Fetch")
+		refused(t, r.gm("search", "fetch", "-n", "-1"), "-n")
+	})
 	t.Run("prints the id, type, date and title, then the file path", func(t *testing.T) {
 		r := newRepo(t)
 		out := r.ok("save", "fact", "--title", "Proxy budget", "--keywords", "a b c", "--fact", "f", "--evidence", "e")

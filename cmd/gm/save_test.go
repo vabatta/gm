@@ -50,6 +50,13 @@ func TestSave(t *testing.T) {
 	t.Run("refuses an empty section and names its flag", func(t *testing.T) {
 		refused(t, newRepo(t).gm("save", "lesson", "--title", "t", "--keywords", "a b c", "--happened", "h", "--cause", "c"), "section Rule now is empty (flag --rule)")
 	})
+	t.Run("refuses section text that repeats a heading of the template", func(t *testing.T) {
+		r := newRepo(t)
+		refused(t, r.gm("save", "decision", "--title", "t", "--keywords", "a b c", "--decision", "x\n## Why\nsmuggled", "--why", "w", "--rejected", "r"), `"## "`)
+		if len(r.notes()) != 0 {
+			t.Fatal("want nothing written")
+		}
+	})
 	t.Run("refuses a supersedes id that names no note", func(t *testing.T) {
 		refused(t, newRepo(t).gm("save", "fact", "--title", "t", "--keywords", "a b c", "--fact", "f", "--evidence", "e",
 			"--supersedes", "20200101T000000Z-000000"), "supersedes unknown note 20200101T000000Z-000000")

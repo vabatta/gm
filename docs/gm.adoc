@@ -131,7 +131,7 @@ error, because it usually means an unquoted flag value.
 
 *-n* _N_::
   For *search*, the most results to print (default 5). For *list*, the most
-  notes to print (default all).
+  notes to print (default all). A negative _N_ is an error.
 
 *--type* _TYPE_::
   For *search*, only notes of this type.
@@ -160,7 +160,7 @@ every broken rule at once, write nothing, and exit 2.
 * The title is one line of 1 to 120 characters.
 * The keywords are one line of at least 3 words. The topic has no spaces.
 * No section is empty, and no section is over 800 characters.
-* No line of section text starts with *+##+*.
+* No line of section text starts with *+## +*, the start of a heading.
 * Every *--supersedes* id names an existing note.
 * Every *--at* anchor can be pinned. See *ANCHORS*.
 

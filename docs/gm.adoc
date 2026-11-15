@@ -1,0 +1,379 @@
+= GM(1)
+:doctype: manpage
+:manmanual: User Commands
+:mansource: gm
+
+== NAME
+
+gm - keep project memory as note files in the repository, merged by git
+
+== SYNOPSIS
+
+*gm save* _TYPE_ *--title* _T_ *--keywords* _WORDS_ _SECTION-FLAGS_ [*--at* __PATH__[:__LINES__]]... [*--topic* _KEY_] [*--supersedes* _ID_]... +
+*gm retire* _ID_... *--why* _TEXT_ +
+*gm search* _WORDS_... [*-n* _N_] [*--type* _TYPE_] [*--all*] [*--json*] +
+*gm show* _ID_ [*--json*] +
+*gm lint* [*--review*] [*--json*] +
+*gm list* [*--by* *type*|*time*] [*-n* _N_] [*--all*] [*--json*] +
+*gm prune* +
+*gm import* _SOURCE_ _FILE_ +
+*gm help* | *-h* | *--help* +
+*gm --version*
+
+== DESCRIPTION
+
+*gm* keeps the memory of a project in the repository the memory is about.
+Each note is one markdown file in *.memory/notes/*. You commit the notes with
+the work, so they travel with branches and worktrees. When branches merge,
+their notes merge with them. git is the only sync. There is no server and no
+index file.
+
+A note holds what a later reader needs and the repository cannot tell them:
+why the code is this way rather than the obvious alternative, what failed and
+why, or a fact from outside the repository that the code depends on. What the
+code, its tests, its docs or the git log already say does not belong in a note.
+
+No command edits a note. A revision is a new note that names the notes it
+replaces with *--supersedes*. A note that some other note supersedes is
+history: it stays on disk, but *search* and *list* hide it. The notes
+that no note supersedes are the _live_ notes.
+
+A retirement is a live note. It withdraws notes that have no successor, and its
+reason often says what replaced them, such as "flags now live in the config
+table". So *search* and *list* show retirements, and hide only the
+notes they retire.
+
+A note can point at the code it describes through _anchors_. An anchor names a
+file, and optionally a line range, at one commit. The commit never changes, so
+*gm show* prints the code that the note was written against, and *gm lint*
+reports when that code leaves the branch history or the file disappears.
+
+*gm-note*(5) describes the file format.
+
+Run every command inside a git worktree. Paths in anchors are relative to the
+root of the worktree.
+
+== COMMANDS
+
+*save* _TYPE_::
+  Write a new note and print its id and its path relative to the repository
+  root. _TYPE_ is *decision*, *lesson* or *fact*. Each type takes one flag per
+  section of its body:
++
+[horizontal]
+*decision*::: *--decision*, *--why*, *--rejected*
+*lesson*::: *--happened*, *--cause*, *--rule*
+*fact*::: *--fact*, *--evidence*
++
+Flags and words can come in any order. A word that belongs to no flag is an
+error, because it usually means an unquoted flag value. Every argument after
+*--* is a word, even one that starts with *-*.
+
+*retire* _ID_...::
+  Write a retirement, a note that supersedes the notes _ID_... and has no
+  successor, and print its id and path. *retire* needs *--why*. An id given
+  twice counts once.
+
+*search* _WORDS_...::
+  Print the live notes that contain any of _WORDS_, best match first. See
+  *SEARCH*.
+
+*show* _ID_::
+  Print the note file, then the code of each anchor, read at the anchor's
+  base commit. See *ANCHORS*. When the base is not the anchor's own commit,
+  the heading of the anchor names the base and why. A line-range anchor shows
+  its lines, numbered. A whole-file anchor shows the first 40 lines. An anchor
+  whose code git cannot read, or whose lines are past the end of the file at
+  the base, shows the reason instead. For a pruned note, *show* reads
+  the file from git history and prints a first line that names the commit
+  that pruned it. See *PRUNING*.
+
+*lint*::
+  Check every note and print one line per problem. See *LINT*.
+
+*list*::
+  Print the live notes, grouped by type, newest first in each group.
+
+*prune*::
+  Delete the files of the notes that another note supersedes, and print the
+  path of each. See *PRUNING*.
+
+*import* _SOURCE_ _FILE_::
+  Write one note for each memory in _FILE_, an export from another memory
+  tool. _SOURCE_ names the tool. *IMPORT* lists the sources gm reads.
+
+*help*, *-h*, *--help*::
+  Print a summary of the commands.
+
+*--version*::
+  Print the version.
+
+== OPTIONS
+
+*--title* _T_::
+  The note's claim, on one line, at most 120 characters.
+
+*--keywords* _WORDS_::
+  At least 3 search words, separated by spaces. Include the words a reader would
+  search with that the note itself does not use.
+
+*--at* __PATH__[:__FROM__[-__TO__]]::
+  Anchor the note to _PATH_ at HEAD, optionally to lines _FROM_ to _TO_. Repeat
+  for each file. See *ANCHORS*.
+
+*--topic* _KEY_::
+  A stable key without spaces, such as *decision/cache-store*, for a note that
+  later notes may revise.
+
+*--supersedes* _ID_::
+  The id of a note that this note replaces. Repeat for each note.
+
+*--why* _TEXT_::
+  For *retire*, why the notes no longer hold.
+
+*-n* _N_::
+  For *search*, the most results to print (default 5). For *list*, the most
+  notes to print (default all). A negative _N_ is an error.
+
+*--type* _TYPE_::
+  For *search*, only notes of this type.
+
+*--all*::
+  For *search* and *list*, include superseded notes and the notes deleted
+  from the working tree, which *gm* reads from git history. *search* marks a
+  superseded note *(superseded)*, and a note read from git history *(pruned
+  in* _COMMIT_*)*.
+
+*--by* *type*|*time*::
+  For *list*, group by type, which is the default, or print the newest first
+  without groups.
+
+*--review*::
+  For *lint*, also list the anchors whose code changed since their commit.
+
+*--json*::
+  Print JSON instead of text, for programs. See *JSON OUTPUT*.
+
+== RULES FOR A NEW NOTE
+
+*save* and *retire* refuse a note that breaks any of these rules. They print
+every broken rule at once, write nothing, and exit 2.
+
+* The title is one line of 1 to 120 characters.
+* The keywords are one line of at least 3 words. The topic has no spaces.
+* No section is empty, and no section is over 800 characters.
+* No line of section text starts with *+## +*, the start of a heading.
+* Every *--supersedes* id names an existing note.
+* Every *--at* anchor can be pinned. See *ANCHORS*.
+
+When the new note has a topic, and other live notes have the same topic and
+the new note does not supersede them, *save* still writes the note. It then
+prints a warning that names those notes.
+
+== ANCHORS
+
+*--at* pins an anchor to the commit at HEAD, written with 12 hex characters:
+__COMMIT__:__PATH__[:__FROM__[-__TO__]].
+
+*save* refuses an anchor when:
+
+* the path is empty or holds a line break;
+* the path names a directory, not a file;
+* the file is not committed at HEAD;
+* the file has uncommitted changes, because the anchor must show the code that
+  the note describes. Commit the code first, then save the note;
+* the line range is not _N_ or _N_-_M_ with _N_ at least 1 and _M_ at least
+  _N_, or it ends past the last line of the file.
+
+When __PATH__[:__LINES__] as a whole names a committed file, *save* takes it as
+the path, so a file name that contains *:* needs no escaping.
+
+*gm* reads an anchor at a _base_ commit:
+
+* the anchor's own commit, while it is in the history of HEAD;
+* otherwise the commit that added the note, which a squash or rebase merge
+  leaves in place of the anchor's commit. That commit holds the code the note
+  describes, because you commit the code before the note or with it;
+* otherwise HEAD, for a note that is not committed yet.
+
+So anchors keep working after a merge commit, a squash merge and a rebase
+merge alike. *show*, *lint* and *lint --review* all use the base.
+
+== REVISIONS AND TOPICS
+
+To revise a note, save a new note with *--supersedes* _ID_. To withdraw notes
+with no successor, run *gm retire*. Never edit or delete a note file.
+
+Branches that save notes in parallel merge without conflicts, because each
+save adds a new file with a new id. When two branches revise the same topic,
+both notes stay live after the merge, and *gm lint* fails until one note
+supersedes both.
+
+== PRUNING
+
+No command edits a note, so superseded notes pile up. *gm* reads every file in
+*.memory/notes/* for every command, so they also slow it down. *gm prune*
+deletes them from the working tree, and git history keeps them.
+
+*prune* deletes the file of every note that another note supersedes. It keeps
+live notes, retirements included. It also keeps a superseded note whose file is
+not committed as it is at HEAD, a file that git ignores included, because no
+commit would keep that note. It
+prints *pruned* _PATH_ for each deleted file and *kept* _PATH_ for each kept
+superseded note. Commit the deletions on a branch like any other change.
+
+A pruned note stays readable. *show* _ID_ reads it from git history, as the
+file was when a commit deleted it. *search --all* and *list --all* include
+it. *lint*, *save --supersedes* and *retire* accept the id of a pruned note. A
+commit that deletes a note and adds a similar one, and a merge commit that
+deletes a note, still count as the commit that pruned the note.
+
+Branches merge as before. When one branch deletes a note file and the other
+leaves it unchanged, the merge deletes it. A shallow clone lacks the history
+that holds pruned notes. There *show* cannot find them, *--all* leaves them
+out, *save --supersedes* and *retire* refuse their ids and say to fetch the
+full history, and *lint* prints a *warning:* line instead of failing on a
+*supersedes* entry it cannot find.
+
+== SEARCH
+
+*search* splits the query into words of letters and digits, ignoring case, and
+drops common English words such as _the_, _what_ and _why_. A note matches when
+it contains any remaining word. The query must keep at least one word.
+
+*search* ranks matches with BM25. A word counts 5 times in the title, 3 times in the
+keywords, topic and anchor paths, and once in the body. When two notes score
+the same, the older note comes first.
+
+*search* prints each result as the id, the type, the creation date and the
+title, then the path of the note file on the next line.
+
+== LINT
+
+*lint* prints one line per problem and exits 1 when it finds any. A problem is:
+
+* a *.md* file in *.memory/notes/* that is not a note;
+* an id used by more than one file;
+* a *supersedes* entry that names no note, neither on disk nor pruned in the
+  history of HEAD;
+* a live note that breaks a rule for a new note. *lint* checks a migrated note
+  only for its title, keywords and topic;
+* an anchor of a live note whose file is gone at HEAD; when git sees the file
+  as renamed since the base, the problem names the new path;
+* a line-range anchor of a live note that is not yet on the default branch,
+  whose lines changed after the base. The note describes code that no longer
+  exists, and a squash merge would hide that, so save a revision before
+  merging. The default branch is the first that exists of *origin/HEAD*,
+  *origin/main*, *origin/master*, *main* and *master*. A remote branch comes
+  first, because a local branch may be behind it. When none exists,
+  *lint* skips this check and prints a *warning:* line that says so. A
+  whole-file anchor is about the file, which may change while the
+  note still holds, so its changes are review lines instead;
+* a topic with more than one live note.
+
+In a shallow clone, the commits of older anchors are missing. *lint* then
+checks only that their files exist at HEAD, and prints a *warning:* line that
+says how many commits it could not check. A warning does not fail *lint*.
+
+With *--review*, *lint* also prints a *review:* line for each other anchor of a
+live note whose code changed after the base. For a line range, only changes
+to those lines count. *lint* follows the lines from the base, also when
+commits added or removed lines above them. A review line does not fail *lint*.
+
+== IMPORT
+
+*import* reads _FILE_ with the reader for _SOURCE_, then writes the memories
+the same way for every source:
+
+* each memory becomes one note with a new id, made from its creation time, or
+  from the time of the import when the memory has none;
+* a memory that replaces another one supersedes it, when *import* writes both;
+* *import* shortens a title that is longer than 120 characters or on several
+  lines, and opens the body with the full title;
+* spaces in a topic become hyphens;
+* the *migrated* header records the source, the memory's id there and its type
+  there, on one line, and exempts the note from the section templates.
+
+*import* writes nothing when two memories in _FILE_ share an id, or when a
+memory has no title.
+
+An unknown _SOURCE_ is an error that lists the sources gm reads.
+
+The sources:
+
+*engram*::
+  A JSON export made with *engram export* _FILE_ *--project* _NAME_. Each
+  observation is a memory. The types *decision*, *learning* and *bugfix*
+  become *decision*, *lesson* and *lesson*, and every other type becomes
+  *fact*. Only the *supersedes* relations that Engram marked _judged_ count.
+
+== JSON OUTPUT
+
+*search --json*::
+  An array of results with *id*, *type*, *created*, *title*, *file*, *score*,
+  *superseded* when another note supersedes the result, and *pruned_in* with
+  the commit that pruned it.
+
+*show --json*::
+  The note's fields, *pruned_in* for a pruned note, and *code*: an array with
+  *anchor*, *from*, *lines*, *read_at* when the base is not the anchor's own
+  commit, and *error* when git cannot read the code.
+
+*lint --json*::
+  An object with *problems*, which is always present, and *review* and
+  *warnings*.
+
+*list --json*::
+  An array of notes without their bodies.
+
+== EXIT STATUS
+
+*0*:: Success.
+*1*:: *lint* found problems.
+*2*:: An error, or a note that *save* or *retire* refused.
+
+== VERSIONS
+
+*gm* follows Semantic Versioning 2.0.0. Its public interface is the commands,
+their options, the *--json* output, the exit status, and the note format of
+*gm-note*(5). A patch release fixes bugs and changes none of these. A minor
+release adds to them. A major release may change them. Before 1.0.0, a minor
+release may also change them, and the release notes say how.
+
+*gm --version* prints the version. The nix package adds the commit it was
+built from as build metadata, such as *0.1.0+3a85ea8*, or *0.1.0+3a85ea8-dirty*
+for a checkout with uncommitted changes, so a build from any commit names that
+commit.
+
+The note format has its own number, the *format* header key of *gm-note*(5). A
+release of *gm* reads every note format that an earlier release wrote.
+
+== FILES
+
+*.memory/notes/*_ID_-_SLUG_.md*::
+  One note. See *gm-note*(5).
+
+== NOTES
+
+Run *gm lint* on a branch before merging it. It fails while a note on the
+branch describes code that changed after the note, which a squash merge would
+otherwise hide.
+
+== EXAMPLES
+
+Save a decision about committed code:
+
+  gm save decision --title "Cache uses Postgres" \
+    --keywords "cache store database postgres" \
+    --decision "Keep the cache in Postgres." \
+    --why "One database to run." --rejected "Redis: another service." \
+    --at internal/cache/store.go:10-42 --topic decision/cache-store
+
+Find and read it:
+
+  gm search where is the cache stored
+  gm show 20261114T174452Z-ef6552
+
+== SEE ALSO
+
+*gm-note*(5), *git*(1)

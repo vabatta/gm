@@ -21,7 +21,7 @@ imports = [ inputs.gm.homeManagerModules.default ];
 programs.gm.enable = true;
 ```
 
-The module installs the `gm` binary and the man pages gm(1) and gm-note(5). For Claude Code, it also links the memory skill into `~/.claude/skills/memory` and adds a SessionStart hook that runs `gm context`. To install only the binary and the man pages, set `programs.gm.claudeCode = false`.
+The module installs the `gm` binary and the man pages gm(1) and gm-note(5). For Claude Code, it also links the memory skill into `~/.claude/skills/memory`. To install only the binary and the man pages, set `programs.gm.claudeCode = false`.
 
 ## Save and find a note
 

@@ -37,7 +37,7 @@ type Note struct {
 	// Supersedes lists the ids of the notes this note replaces. A superseded
 	// note stays on disk as history but is no longer live.
 	Supersedes []string `json:"supersedes,omitempty"`
-	// Created is the creation time in RFC 3339, UTC. gm list and gm context sort by it.
+	// Created is the creation time in RFC 3339, UTC. gm list --by time sorts by it.
 	Created string `json:"created"`
 	// Migrated records where an imported note came from, such as
 	// "engram obs-1 (decision)". A migrated note keeps the body it was imported

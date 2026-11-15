@@ -1,4 +1,4 @@
-# Installs gm and, for Claude Code, links the memory skill and runs `gm context` at session start.
+# Installs gm and, for Claude Code, links the memory skill.
 self:
 { config, lib, pkgs, ... }:
 let
@@ -16,7 +16,7 @@ in
     claudeCode = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Link the memory skill into ~/.claude/skills and add a Claude Code SessionStart hook that prints recent notes.";
+      description = "Link the memory skill into ~/.claude/skills for Claude Code.";
     };
   };
 
@@ -24,9 +24,6 @@ in
     { home.packages = [ cfg.package ]; }
     (lib.mkIf cfg.claudeCode {
       home.file.".claude/skills/memory".source = "${cfg.package}/share/gm/skills/memory";
-      programs.claude-code.settings.hooks.SessionStart = [
-        { hooks = [ { type = "command"; command = "${lib.getExe cfg.package} context"; } ]; }
-      ];
     })
   ]);
 }

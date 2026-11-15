@@ -60,12 +60,5 @@ func list(st *memory.Store, args []string, w io.Writer) error {
 	return nil
 }
 
-// context runs gm context. It prints one line on how to use gm, then the 15
-// newest live notes. An -n flag in args replaces the 15.
-func context(st *memory.Store, args []string, w io.Writer) error {
-	fmt.Fprintln(w, "Project memory (gm), recent notes. Search with `gm search WORDS`, read one with `gm show ID`; the memory skill says when to save.")
-	return list(st, append([]string{"--by", "time", "-n", "15"}, args...), w)
-}
-
 // day returns the date part of an RFC 3339 time.
 func day(created string) string { return created[:min(10, len(created))] }

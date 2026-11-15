@@ -20,11 +20,11 @@ func TestRevisions(t *testing.T) {
 		}
 		r.ok("lint")
 	})
-	t.Run("a revision hides the note it supersedes from search, list and context", func(t *testing.T) {
+	t.Run("a revision hides the note it supersedes from search and list", func(t *testing.T) {
 		r := newRepo(t)
 		old := r.fact("Fetch retries twice")
 		r.fact("Fetch retries three times", "--supersedes", old)
-		for _, args := range [][]string{{"search", "fetch"}, {"list"}, {"context"}} {
+		for _, args := range [][]string{{"search", "fetch"}, {"list"}} {
 			lacks(t, r.ok(args...), old)
 		}
 	})

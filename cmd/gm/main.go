@@ -28,7 +28,6 @@ gm search WORDS... [-n 5] [--type T] [--all] [--json]
 gm show ID [--json]      the note and the code its anchors point at, read from their commit
 gm lint [--review] [--json]  exit 1 on broken notes; --review also lists anchors whose code changed
 gm list [--by type|time] [-n N] [--all] [--json]   the catalogue or the log of live notes
-gm context [-n 15]       recent live notes for a session-start hook; silent outside a repo with notes
 gm prune                 delete superseded notes; git history keeps them for show and --all
 gm import SOURCE FILE    write the memories exported from another tool; SOURCE: engram
 gm --version
@@ -60,10 +59,6 @@ func main() { os.Exit(run(os.Args[1:], ".", os.Stdout, os.Stderr)) }
 
 // run executes one gm command in dir and returns the exit status: 0 on
 // success, 1 when lint finds problems, 2 on any other error.
-//
-// gm context always returns 0, and it prints nothing outside a repository
-// with notes. Claude Code runs it as a SessionStart hook in every directory,
-// and a failing hook would get in the way of the session.
 func run(args []string, dir string, stdout, stderr io.Writer) int {
 	if len(args) == 0 || args[0] == "help" || args[0] == "-h" || args[0] == "--help" {
 		fmt.Fprint(stdout, usage)
@@ -75,12 +70,6 @@ func run(args []string, dir string, stdout, stderr io.Writer) int {
 	}
 	cmd, args := args[0], args[1:]
 	st, err := memory.Open(dir)
-	if cmd == "context" {
-		if err == nil && len(st.Files()) > 0 {
-			_ = context(st, args, stdout)
-		}
-		return 0
-	}
 	if err == nil {
 		if do, ok := commands[cmd]; ok {
 			err = do(st, args, stdout)
@@ -99,8 +88,7 @@ func run(args []string, dir string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// commands maps each command name to the function that runs it. context is
-// not here, because run handles it before opening the store.
+// commands maps each command name to the function that runs it.
 var commands = map[string]func(st *memory.Store, args []string, w io.Writer) error{
 	"save":   save,
 	"retire": retire,

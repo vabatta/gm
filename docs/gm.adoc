@@ -15,7 +15,6 @@ gm - keep project memory as note files in the repository, merged by git
 *gm show* _ID_ [*--json*] +
 *gm lint* [*--review*] [*--json*] +
 *gm list* [*--by* *type*|*time*] [*-n* _N_] [*--all*] [*--json*] +
-*gm context* [*-n* _N_] +
 *gm prune* +
 *gm import* _SOURCE_ _FILE_ +
 *gm help* | *-h* | *--help* +
@@ -36,12 +35,12 @@ code, its tests, its docs or the git log already say does not belong in a note.
 
 A note is never edited. A revision is a new note that names the notes it
 replaces with *--supersedes*. A note that some other note supersedes is
-history: it stays on disk, but *search*, *list* and *context* hide it. The notes
+history: it stays on disk, but *search* and *list* hide it. The notes
 that no note supersedes are the _live_ notes.
 
 A retirement is a live note. It withdraws notes that have no successor, and its
 reason often says what replaced them, such as "flags now live in the config
-table". So *search*, *list* and *context* show retirements, and hide only the
+table". So *search* and *list* show retirements, and hide only the
 notes they retire.
 
 A note can point at the code it describes through _anchors_. An anchor names a
@@ -91,11 +90,6 @@ error, because it usually means an unquoted flag value.
 *list*::
   Print the live notes, grouped by type, newest first in each group.
 
-*context*::
-  Print one line that explains *gm*, then the 15 newest live notes. Outside a
-  git worktree, or in a repository without notes, print nothing. *context*
-  always exits 0, because it runs as a session-start hook in every directory.
-
 *prune*::
   Delete the files of the notes that another note supersedes, and print the
   path of each. See *PRUNING*.
@@ -135,8 +129,7 @@ error, because it usually means an unquoted flag value.
 
 *-n* _N_::
   For *search*, the most results to print (default 5). For *list*, the most
-  notes to print (default all). For *context*, the most notes to print
-  (default 15).
+  notes to print (default all).
 
 *--type* _TYPE_::
   For *search*, only notes of this type.

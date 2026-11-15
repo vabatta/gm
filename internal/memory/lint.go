@@ -22,13 +22,13 @@ type Report struct {
 // Lint checks every note. A problem is a file that does not parse, an id used
 // by more than one file, a supersedes entry that names no note on disk and no
 // note pruned in the history of HEAD, a live note that breaks a rule in
-// note.Problems, an anchor whose file anchor.Resolve finds gone, an anchor of
-// a note not yet on the default branch whose code changed after its base, or
-// a topic with more than one live note. A note on a branch is about to be
-// merged, and a squash merge would hide that its code changed, so there the
-// change is a problem rather than a review line. Superseded notes are history,
-// so of the per-note checks only the supersedes check applies to them. With
-// review, Lint also lists each anchor of a note on the default branch whose
+// note.Problems, an anchor whose file anchor.Resolve finds gone, a line-range
+// anchor of a note not yet on the default branch whose lines changed after
+// its base, or a topic with more than one live note. A note on a branch is
+// about to be merged, and a squash merge would hide that its lines changed, so
+// there the change is a problem rather than a review line. Superseded notes
+// are history, so of the per-note checks only the supersedes check applies to
+// them. With review, Lint also lists every other anchor of a live note whose
 // code changed after its base.
 func (s *Store) Lint(review bool) Report {
 	ns, bad := s.Load()
@@ -81,10 +81,8 @@ func (s *Store) Lint(review bool) Report {
 				}
 			case r.Problem != "":
 				report("%s: %s: %s", n.File, r.Spec, r.Problem)
-			case onBranch(n):
-				if anchor.Changed(s.Git, r.Base, r.Anchor) {
-					report("%s: %s: the anchored code changed after the note; save a revision anchored to the code as it is now", n.File, r.Spec)
-				}
+			case onBranch(n) && r.Anchor.From > 0 && anchor.Changed(s.Git, r.Base, r.Anchor):
+				report("%s: %s: the anchored code changed after the note; save a revision anchored to the code as it is now", n.File, r.Spec)
 			case review && anchor.Changed(s.Git, r.Base, r.Anchor):
 				rep.Review = append(rep.Review, fmt.Sprintf("%s: %s changed since its base commit; re-read the note", n.File, r.Spec))
 			}

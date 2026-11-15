@@ -29,6 +29,11 @@ with the work, so they travel with branches and worktrees. When branches merge,
 their notes merge with them. git is the only sync. There is no server and no
 index file.
 
+A note holds what a later reader needs and the repository cannot tell them:
+why the code is this way rather than the obvious alternative, what failed and
+why, or a fact from outside the repository that the code depends on. What the
+code, its tests, its docs or the git log already say does not belong in a note.
+
 A note is never edited. A revision is a new note that names the notes it
 replaces with *--supersedes*. A note that some other note supersedes is
 history: it stays on disk, but *search*, *list* and *context* hide it. The notes

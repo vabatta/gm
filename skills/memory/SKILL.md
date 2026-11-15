@@ -13,9 +13,29 @@ At the start of a task, and before reading code to answer a question, run `gm se
 
 A note is evidence from the time it was written, not a fact about the code now. When `gm show` and the current code disagree, the code wins. Save a revision.
 
+## What a memory is
+
+A memory is knowledge that a later agent needs and cannot get from the repository. The repository is the code, the tests, the docs, AGENTS.md, and `git log`. A memory is one of three things, and nothing else:
+
+- **Why, against the alternative.** Why the code is this way and not the obvious other way, with the evidence that ruled the other way out. Without it, a later agent "fixes" the code back.
+- **What failed.** A failure, its cause, and the rule that prevents it.
+- **What holds outside the repository.** How a tool, service, platform, or person behaves, observed or measured, that the code depends on.
+
+Test every note before you save it: if the note were deleted, would an agent that reads the code, the tests, the docs, and `git log` make a worse change? If not, do not save it.
+
+Never save:
+
+- what the code, a test name, a doc comment, the manual, or AGENTS.md already says;
+- a summary of what a commit, a task, or a session did. The commit message holds it;
+- a number that a script in the repository reproduces, such as a benchmark timing;
+- a request without its reason. A standing rule from a person goes in AGENTS.md;
+- a plan, a task list, or work in progress.
+
+In a decision, the Decision section names the choice in one line. The Why and Rejected sections are the memory. Most tasks produce no note. One note a reader needs is worth more than ten they skip.
+
 ## Save after you learn
 
-Save when the work produced something a later agent would otherwise rediscover: a decision with its reason and the option rejected, a lesson from a failure, or a measured fact. Skip what the code, a test name, or a doc comment already says.
+Save when the work taught you something that passes the test above.
 
 1. Commit the code the note is about. `gm save --at` refuses files with uncommitted changes, so the anchor shows the code the note describes. Done when `git status` is clean for those files.
 2. Pick the type: `decision` (decision, why, rejected), `lesson` (happened, cause, rule), or `fact` (fact, evidence). Write the title as a one-line claim. Write at least three `--keywords`, including the words someone would search with that the note itself does not use. Anchor every file the note is about with `--at path[:from-to]`, the path taken from the repository root. Give a `--topic` when the note may be revised later. Done when every flag of the type has a value.

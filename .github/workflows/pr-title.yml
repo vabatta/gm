@@ -6,10 +6,8 @@ permissions:
   contents: read
 jobs:
   conventional:
-    # ubuntu-slim is a 1-vCPU container, enough for these jobs. GitHub offers
-    # no version-pinned slim label; it runs Ubuntu 24.04 today.
     runs-on: ubuntu-slim
-    timeout-minutes: 15 # the limit GitHub sets for single-CPU runners
+    timeout-minutes: 15
     env:
       # The title reaches the shell through the environment, never through
       # expression interpolation in the script, so a title cannot inject code.

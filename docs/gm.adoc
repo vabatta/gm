@@ -222,22 +222,9 @@ configuration of a clone, because each clone has its own. _dir_ is a path
 relative to the root of the worktree that stays inside it; *gm* refuses to run
 when it is empty, absolute or leads out of the worktree.
 
-Earlier releases kept notes in *.memory/notes/*. When *.gmconfig* sets no
-_dir_, *.agents/memory/* does not exist and *.memory/notes/* does, *gm* keeps
-using *.memory/notes/*, so such a repository works as before. To move its notes
-to the default, run:
-
-  mkdir -p .agents && git mv .memory/notes .agents/memory
-
-*gm* reads notes only from the notes directory. When it is not
-*.memory/notes/* and *.memory/notes/* still holds *.md* files, for example
-from a branch that saved notes before the move, *lint* reports each such file
-as a problem, so no note is left behind unseen.
-
-Commands that read notes from git history read both *.memory/notes/* and the
-notes directory, so after a move from *.memory/notes/* *show* still finds a
-note pruned before the move. A note pruned in a directory that _dir_ named
-before, and no longer names, is not read.
+To move the notes, set _dir_ and move the files with *git mv* in one commit.
+*gm* reads notes, pruned ones included, only from the notes directory, so
+after a move *show* no longer finds a note pruned in the old one.
 
 == REVISIONS AND TOPICS
 
@@ -293,7 +280,6 @@ title, then the path of the note file on the next line.
 *lint* prints one line per problem and exits 1 when it finds any. A problem is:
 
 * a *.md* file in the notes directory that is not a note;
-* a *.md* file in *.memory/notes/* when the notes directory is another one;
 * an id used by more than one file;
 * a *supersedes* entry that names no note, neither on disk nor pruned in the
   history of HEAD;

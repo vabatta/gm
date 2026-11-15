@@ -35,8 +35,6 @@ Notes go in `.agents/memory/` by default. To keep them elsewhere, set the direct
 git config --file .gmconfig gm.dir docs/memory
 ```
 
-A repository with notes in `.memory/notes/` from an earlier release keeps working. To move them to the default, run `mkdir -p .agents && git mv .memory/notes .agents/memory` and commit.
-
 ## Save and find a note
 
 Run every command from the root of a git repository.

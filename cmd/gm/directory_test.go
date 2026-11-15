@@ -70,42 +70,17 @@ func TestDirectory(t *testing.T) {
 			refused(t, r.gm("list"), ".gmconfig", "gm.dir")
 		}
 	})
-	t.Run("without dir, .memory/notes is kept when it exists and .agents/memory does not", func(t *testing.T) {
+	t.Run("after a move, show no longer finds a note pruned in the old directory", func(t *testing.T) {
 		r := newRepo(t)
-		r.setDir("docs/memory")
-		r.write(".memory/notes/.keep", "")
-		r.git("config", "--file", ".gmconfig", "--unset", "gm.dir")
-		has(t, r.saveFact("Fetch retries twice"), " .memory/notes/2")
-	})
-	t.Run("lint reports each note left in .memory/notes when the notes directory is another one", func(t *testing.T) {
-		for _, move := range []func(r *repo){
-			func(r *repo) { r.write(".agents/memory/.keep", "") },
-			func(r *repo) { r.setDir("docs/memory") },
-		} {
-			r := newRepo(t)
-			r.setDir(".memory/notes")
-			id := r.fact("Fetch retries twice")
-			r.git("config", "--file", ".gmconfig", "--unset", "gm.dir")
-			r.commit("notes")
-			move(r)
-			res := r.gm("lint")
-			if res.code != 1 {
-				t.Fatalf("want exit 1, got %s", res)
-			}
-			has(t, res.stdout, ".memory/notes/"+id+"-", "git mv")
-		}
-	})
-	t.Run("after a move from .memory/notes, show still finds a note pruned before the move", func(t *testing.T) {
-		r := legacyRepo(t)
 		old := r.fact("Fetch retries twice")
 		r.fact("Fetch retries five times", "--supersedes", old)
 		r.commit("notes")
 		r.ok("prune")
 		r.commit("prune")
-		moveToDefault(r)
-		has(t, r.ok("show", old), "Fetch retries twice", "pruned in")
-		if res := r.gm("lint"); res.code != 0 {
-			t.Fatalf("want lint clean after the move, got %s", res)
-		}
+		r.setDir("docs/memory")
+		r.write("docs/.keep", "")
+		r.git("mv", ".agents/memory", "docs/memory")
+		r.commit("move")
+		refused(t, r.gm("show", old), "no note "+old)
 	})
 }

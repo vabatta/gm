@@ -4,7 +4,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -56,7 +55,7 @@ type prunedFile struct{ commit, path, blob string }
 // parent, so a note deleted in a merge counts too; Pruned keeps one copy. In a shallow clone it lists only the deletions in the history the
 // clone has.
 func (s *Store) prunedFiles() []prunedFile {
-	out, err := s.Git.Run(append([]string{"log", "--no-renames", "--diff-merges=separate", "--diff-filter=D", "--raw", "--no-abbrev", "--format=commit %H", "--"}, s.historyPaths()...)...)
+	out, err := s.Git.Run("log", "--no-renames", "--diff-merges=separate", "--diff-filter=D", "--raw", "--no-abbrev", "--format=commit %H", "--", s.notesPath)
 	if err != nil {
 		return nil
 	}
@@ -69,7 +68,7 @@ func (s *Store) prunedFiles() []prunedFile {
 		}
 		// :100644 000000 <old blob> <new blob> D<TAB><path>
 		meta, file, ok := strings.Cut(line, "\t")
-		if f := strings.Fields(meta); ok && len(f) == 5 && strings.HasSuffix(file, ".md") && slices.Contains(s.historyPaths(), path.Dir(file)) {
+		if f := strings.Fields(meta); ok && len(f) == 5 && strings.HasSuffix(file, ".md") && path.Dir(file) == s.notesPath {
 			files = append(files, prunedFile{commit, file, f[2]})
 		}
 	}

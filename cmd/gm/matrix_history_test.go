@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -97,26 +96,6 @@ func onDisk(r *repo, id string) bool {
 	return slices.ContainsFunc(r.notes(), func(f string) bool { return strings.HasPrefix(filepath.Base(f), id+"-") })
 }
 
-// legacyRepo makes a repository like newRepo whose notes go to .memory/notes,
-// as in a repository from an earlier release.
-func legacyRepo(t *testing.T) *repo {
-	t.Helper()
-	r := newRepo(t)
-	if err := os.MkdirAll(filepath.Join(r.dir, ".memory", "notes"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	return r
-}
-
-// moveToDefault moves the notes from .memory/notes to .agents/memory with git
-// mv and commits the move.
-func moveToDefault(r *repo) {
-	r.t.Helper()
-	r.write(".agents/.keep", "")
-	r.git("mv", ".memory/notes", ".agents/memory")
-	r.commit("move notes")
-}
-
 func runPrep(prep histPrep, r *repo, id string) {
 	if prep != nil {
 		prep(r, id)
@@ -151,18 +130,6 @@ func localShapes() []histShape {
 			added := r.head()
 			r.git("branch", "-qD", "feat")
 			runPrep(prep, r, id)
-			return histScenario{r: r, id: id, file: "fetch.go", line: histRetry, anchor: a, added: added}
-		}},
-		{name: "squash merge in .memory/notes, then notes moved to .agents/memory", base: baseAdded, build: func(t *testing.T, prep histPrep) histScenario {
-			r := legacyRepo(t)
-			id, a := feature(r)
-			moves(r, "main")
-			r.git("merge", "-q", "--squash", "feat")
-			r.commit("squash feat")
-			added := r.head()
-			r.git("branch", "-qD", "feat")
-			runPrep(prep, r, id)
-			moveToDefault(r)
 			return histScenario{r: r, id: id, file: "fetch.go", line: histRetry, anchor: a, added: added}
 		}},
 		{name: "rebase then fast-forward, branch deleted", base: baseAdded, build: func(t *testing.T, prep histPrep) histScenario {

@@ -50,6 +50,31 @@ func TestLint(t *testing.T) {
 		r.note("20200101T000000Z-bbbbbb", "type: fact\ntitle: \"T\"\ncreated: 2020-01-01T00:00:00Z\ntopic: a b\nmigrated: engram obs-2 (discovery)\n", "free text\n")
 		fails(t, lint(r), "topic one word")
 	})
+	// branchClone returns a detached checkout of a branch whose anchored line
+	// changed after its note, in a clone with no origin/HEAD and no local main.
+	branchClone := func(t *testing.T) *repo {
+		r := newRepo(t)
+		r.git("checkout", "-qb", "feat")
+		r.fact("Fetch", "--at", "fetch.go:3")
+		r.commit("note")
+		r.write("fetch.go", "package x\n\nfunc Fetch() { retry() }\n")
+		r.commit("change")
+		r.git("checkout", "-q", "main")
+		clone := &repo{t, t.TempDir()}
+		clone.git("clone", "-q", "file://"+r.dir, ".")
+		clone.git("checkout", "-q", "origin/feat")
+		clone.git("branch", "-qD", "main")
+		clone.git("remote", "set-head", "origin", "-d")
+		return clone
+	}
+	t.Run("finds the default branch as origin/main when there is no origin/HEAD and no local main", func(t *testing.T) {
+		fails(t, lint(branchClone(t)), "the anchored code changed after the note")
+	})
+	t.Run("warns and skips the branch rule when no default branch exists", func(t *testing.T) {
+		clone := branchClone(t)
+		clone.git("update-ref", "-d", "refs/remotes/origin/main")
+		has(t, clone.ok("lint"), "warning: no default branch")
+	})
 	t.Run("reports an anchor whose file is gone when the path holds a space", func(t *testing.T) {
 		r := newRepo(t)
 		r.write("my file.go", "package x\n")

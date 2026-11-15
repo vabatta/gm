@@ -247,7 +247,7 @@ title, then the path of the note file on the next line.
 
 *lint* prints one line per problem and exits 1 when it finds any. A problem is:
 
-* a file in *.memory/notes/* that is not a note;
+* a *.md* file in *.memory/notes/* that is not a note;
 * an id used by more than one file;
 * a *supersedes* entry that names no note, neither on disk nor pruned in the
   history of HEAD;
@@ -258,8 +258,10 @@ title, then the path of the note file on the next line.
 * a line-range anchor of a live note that is not yet on the default branch,
   whose lines changed after the base. The note describes code that no longer
   exists, and a squash merge would hide that, so save a revision before
-  merging. The default branch is *origin/HEAD*, or else *main*, or else
-  *master*. A whole-file anchor is about the file, which may change while the
+  merging. The default branch is the first that exists of *origin/HEAD*,
+  *main*, *master*, *origin/main* and *origin/master*. When none exists,
+  *lint* skips this check and prints a *warning:* line that says so. A
+  whole-file anchor is about the file, which may change while the
   note still holds, so its changes are review lines instead;
 * a topic with more than one live note.
 

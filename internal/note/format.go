@@ -3,6 +3,7 @@ package note
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -55,9 +56,16 @@ func parseList(v string) []string {
 	return xs
 }
 
+// Format is the note format this gm reads and writes. A note without a format
+// key is format 1, so gm writes none.
+const Format = "1"
+
 // Parse reads the content of a note file. file is the file's path relative to
 // the repository root, kept in Note.File. CRLF line ends are accepted. Unknown
-// header keys are ignored, so an older gm can read notes from a newer one.
+// header keys are ignored, so an older gm can read notes from a newer one. A
+// format key other than Format is refused rather than ignored: such a note
+// changed in a way this gm cannot read, and reading it as format 1 would be
+// wrong.
 func Parse(content []byte, file string) (Note, error) {
 	s := strings.ReplaceAll(string(content), "\r\n", "\n")
 	if !strings.HasPrefix(s, "---\n") {
@@ -91,6 +99,10 @@ func Parse(content []byte, file string) (Note, error) {
 			n.Created = v
 		case "migrated":
 			n.Migrated = v
+		case "format":
+			if v != Format {
+				return n, fmt.Errorf("note format %s needs a newer gm", v)
+			}
 		}
 	}
 	if n.ID == "" {

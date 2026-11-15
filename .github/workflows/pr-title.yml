@@ -6,7 +6,7 @@ permissions:
   contents: read
 jobs:
   conventional:
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-slim
     timeout-minutes: 15
     env:
       # The title reaches the shell through the environment, never through

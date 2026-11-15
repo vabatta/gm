@@ -1,20 +1,31 @@
-// Package search ranks notes against a query with BM25, the relevance formula
-// that SQLite FTS5 uses. It reads the note files on every search. A few hundred
-// small files take milliseconds to read, so there is no index to build, keep
-// fresh or git-ignore.
+// Package search finds the notes that match a query.
+//
+// It is the port of a ports-and-adapters design, like package importer. A
+// Ranker is the port: an adapter scores notes against the query words, and
+// nothing else. The rules every ranker shares are written once, in Find:
+// which words of the query count, which notes are searched, and how scores
+// become hits. Adapters live in subpackages, such as search/bm25, and the
+// command picks one; this package imports none.
 package search
 
 import (
 	"cmp"
 	"errors"
-	"math"
 	"regexp"
 	"slices"
 	"strings"
 
-	"github.com/vabatta/gm/internal/anchor"
 	"github.com/vabatta/gm/internal/memory"
+	"github.com/vabatta/gm/internal/note"
 )
+
+// Ranker is the port each search adapter implements.
+type Ranker interface {
+	// Rank scores each note in ns against terms, the lowercase query words
+	// without stop words. The result has one score per note, in the order of
+	// ns; 0 means the note does not match.
+	Rank(ns []note.Note, terms []string) []float64
+}
 
 // Query is one search.
 type Query struct {
@@ -28,7 +39,7 @@ type Query struct {
 
 // Hit is one search result. Superseded is true when another note supersedes
 // it, and PrunedIn names the commit that pruned it, for a note read from git
-// history. Score is the BM25 score, and a higher score ranks first.
+// history. Score is the ranker's score, and a higher score ranks first.
 type Hit struct {
 	ID         string  `json:"id"`
 	Type       string  `json:"type"`
@@ -40,17 +51,10 @@ type Hit struct {
 	Score      float64 `json:"score"`
 }
 
-// k1 and b are the BM25 parameters. They have the SQLite FTS5 values, so the
-// ranking matches the FTS5 index that gm used before.
-const k1, b = 1.2, 0.75
-
 var (
 	// wordRe finds words the way the FTS5 unicode61 tokenizer does, as runs of
 	// letters and digits, except that it keeps diacritics.
 	wordRe = regexp.MustCompile(`[\pL\pN]+`)
-	// split turns the separators in topics and paths into spaces, so that
-	// decision/cache-store and internal/search/search.go give searchable words.
-	split = strings.NewReplacer("/", " ", ".", " ", "_", " ", "-", " ")
 	// stop holds common English words that would match almost every note.
 	stop = map[string]bool{}
 )
@@ -61,21 +65,20 @@ func init() {
 	}
 }
 
-// words returns the words of s in lowercase.
-func words(s string) []string { return wordRe.FindAllString(strings.ToLower(s), -1) }
+// Words returns the words of s in lowercase. Rankers split note text with it,
+// so a note's words and the query's words always compare alike.
+func Words(s string) []string { return wordRe.FindAllString(strings.ToLower(s), -1) }
 
-// Find returns at most q.Limit notes that match q, best first.
-//
-// The score is BM25 over three fields. A query word counts 5 times in the
-// title, 3 times in the keywords, topic and anchor paths, and once in the body.
-// Document frequency and average length cover all notes, superseded ones
-// included, as in FTS5. Notes with equal scores keep file order, so the older
-// note comes first.
-func Find(st *memory.Store, q Query) ([]Hit, error) {
-	terms := map[string]bool{}
-	for _, w := range words(q.Words) {
-		if !stop[w] {
-			terms[w] = true
+// Find returns at most q.Limit notes that match q, best first, as r ranks
+// them. r scores every note on disk, superseded ones included, so corpus
+// statistics do not depend on --all; --all adds the pruned notes from git
+// history. Notes with equal scores keep file order, so the older note comes
+// first.
+func Find(st *memory.Store, r Ranker, q Query) ([]Hit, error) {
+	var terms []string
+	for _, w := range Words(q.Words) {
+		if !stop[w] && !slices.Contains(terms, w) {
+			terms = append(terms, w)
 		}
 	}
 	if len(terms) == 0 {
@@ -86,51 +89,14 @@ func Find(st *memory.Store, q Query) ([]Hit, error) {
 		ns = st.All()
 	}
 	dead := memory.Dead(ns)
-	type doc struct {
-		hit Hit
-		tf  map[string]float64 // weighted count of each query word in the note
-		len int                // all words in the note, unweighted, as FTS5 counts length
-	}
-	docs := make([]doc, len(ns))
-	df := map[string]int{}
-	total := 0
-	for i, n := range ns {
-		kw := []string{n.Keywords, split.Replace(n.Topic)}
-		for _, s := range n.At {
-			if a, err := anchor.Parse(s); err == nil {
-				kw = append(kw, split.Replace(a.Path))
-			}
-		}
-		d := doc{hit: Hit{ID: n.ID, Type: n.Type, Created: n.Created, Title: n.Title, File: n.File,
-			Superseded: dead[n.ID], PrunedIn: n.PrunedIn}, tf: map[string]float64{}}
-		for _, col := range []struct {
-			text   string
-			weight float64
-		}{{n.Title, 5}, {strings.Join(kw, " "), 3}, {n.Body, 1}} {
-			for _, w := range words(col.text) {
-				d.len++
-				if terms[w] {
-					d.tf[w] += col.weight
-				}
-			}
-		}
-		for w := range d.tf {
-			df[w]++
-		}
-		total += d.len
-		docs[i] = d
-	}
-	avg := float64(total) / float64(max(len(docs), 1))
+	scores := r.Rank(ns, terms)
 	var hits []Hit
-	for _, d := range docs {
-		if len(d.tf) == 0 || (d.hit.Superseded && !q.All) || (q.Type != "" && d.hit.Type != q.Type) {
+	for i, n := range ns {
+		if scores[i] == 0 || (dead[n.ID] && !q.All) || (q.Type != "" && n.Type != q.Type) {
 			continue
 		}
-		for w, tf := range d.tf {
-			idf := max(math.Log((float64(len(docs)-df[w])+0.5)/(float64(df[w])+0.5)), 1e-6)
-			d.hit.Score += idf * tf * (k1 + 1) / (tf + k1*(1-b+b*float64(d.len)/avg))
-		}
-		hits = append(hits, d.hit)
+		hits = append(hits, Hit{ID: n.ID, Type: n.Type, Created: n.Created, Title: n.Title, File: n.File,
+			Superseded: dead[n.ID], PrunedIn: n.PrunedIn, Score: scores[i]})
 	}
 	slices.SortStableFunc(hits, func(x, y Hit) int { return cmp.Compare(y.Score, x.Score) })
 	return hits[:min(len(hits), q.Limit)], nil

@@ -7,7 +7,13 @@ import (
 
 	"github.com/vabatta/gm/internal/memory"
 	"github.com/vabatta/gm/internal/search"
+	"github.com/vabatta/gm/internal/search/bm25"
 )
+
+// ranker is the search adapter gm uses. Another ranker, such as an index or
+// a git grep prefilter, is an adapter package that implements search.Ranker
+// and a change of this line; bench/run.sh compares it with the one before.
+var ranker search.Ranker = bm25.Ranker{}
 
 // find runs gm search.
 func find(st *memory.Store, args []string, w io.Writer) error {
@@ -21,7 +27,7 @@ func find(st *memory.Store, args []string, w io.Writer) error {
 		return err
 	}
 	q.Words = strings.Join(fs.Args(), " ")
-	hits, err := search.Find(st, q)
+	hits, err := search.Find(st, ranker, q)
 	if err != nil {
 		return err
 	}

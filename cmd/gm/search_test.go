@@ -99,6 +99,11 @@ func TestSearch(t *testing.T) {
 			t.Fatalf("want 1 result, got %d", n)
 		}
 	})
+	t.Run("takes every argument after -- as a query word", func(t *testing.T) {
+		r := newRepo(t)
+		id := r.fact("Fetch retries twice")
+		equal(t, ids(t, r.ok("search", "--json", "--", "fetch")), []string{id})
+	})
 	t.Run("prints the id, type, date and title, then the file path", func(t *testing.T) {
 		r := newRepo(t)
 		out := r.ok("save", "fact", "--title", "Proxy budget", "--keywords", "a b c", "--fact", "f", "--evidence", "e")

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestImport(t *testing.T) {
@@ -74,6 +75,21 @@ func TestImport(t *testing.T) {
 		r := newRepo(t)
 		r.ok("import", "engram", export(r, obs("obs-1", "decision", "First line\nsecond line", "body"), ""))
 		has(t, r.read(strings.TrimPrefix(r.notes()[0], r.dir+"/")), `title: "First line"`, "---\nFirst line\nsecond line\n\nbody\n")
+	})
+	t.Run("makes the id from the time of the import when an observation has no creation time", func(t *testing.T) {
+		r := newRepo(t)
+		b, _ := json.Marshal(map[string]string{"sync_id": "obs-1", "type": "decision", "title": "T", "content": "c"})
+		r.ok("import", "engram", export(r, string(b), ""))
+		has(t, filepath.Base(r.notes()[0]), time.Now().UTC().Format("20060102T"))
+	})
+	t.Run("exits 2 for a missing file or a file that is not JSON", func(t *testing.T) {
+		r := newRepo(t)
+		refused(t, r.gm("import", "engram", filepath.Join(t.TempDir(), "absent.json")), "absent.json")
+		bad := filepath.Join(t.TempDir(), "bad.json")
+		if err := os.WriteFile(bad, []byte("not json"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		refused(t, r.gm("import", "engram", bad), "invalid character")
 	})
 	t.Run("turns spaces in a topic into hyphens", func(t *testing.T) {
 		r := newRepo(t)

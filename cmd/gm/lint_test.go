@@ -115,6 +115,14 @@ func TestLint(t *testing.T) {
 		r.commit("change")
 		fails(t, lint(r), "the anchored code changed after the note")
 	})
+	t.Run("reports a hand-written note with an unknown type, a malformed anchor, or a retirement that supersedes nothing", func(t *testing.T) {
+		r := newRepo(t)
+		r.note("20200101T000000Z-aaaaaa", "type: guess\ntitle: \"T\"\nkeywords: a b c\ncreated: 2020-01-01T00:00:00Z\n", sound)
+		r.note("20200101T000000Z-bbbbbb", "type: fact\ntitle: \"T\"\nkeywords: a b c\nat: [not-an-anchor]\ncreated: 2020-01-01T00:00:00Z\n", sound)
+		r.note("20200101T000000Z-cccccc", "type: retirement\ntitle: \"T\"\ncreated: 2020-01-01T00:00:00Z\n", "## Why\nw\n")
+		fails(t, lint(r), "type must be decision, lesson, fact or retirement", "not-an-anchor: anchor must be commit:path[:lines]", "a retirement must supersede at least one note")
+		has(t, r.ok("show", "20200101T000000Z-bbbbbb"), "\n# not-an-anchor: anchor must be")
+	})
 	t.Run("reports an anchor whose file is gone when the path holds a space", func(t *testing.T) {
 		r := newRepo(t)
 		r.write("my file.go", "package x\n")

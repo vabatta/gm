@@ -66,7 +66,8 @@ root of the worktree.
 *fact*::: *--fact*, *--evidence*
 +
 Flags and words can come in any order. A word that belongs to no flag is an
-error, because it usually means an unquoted flag value.
+error, because it usually means an unquoted flag value. Every argument after
+*--* is a word, even one that starts with *-*.
 
 *retire* _ID_...::
   Write a retirement, a note that supersedes the notes _ID_... and has no
@@ -284,7 +285,8 @@ commits added or removed lines above them. A review line does not fail *lint*.
 *import* reads _FILE_ with the reader for _SOURCE_, then writes the memories
 the same way for every source:
 
-* each memory becomes one note with a new id, made from its creation time;
+* each memory becomes one note with a new id, made from its creation time, or
+  from the time of the import when the memory has none;
 * a memory that replaces another one supersedes it, when *import* writes both;
 * *import* shortens a title that is longer than 120 characters or on several
   lines, and opens the body with the full title;

@@ -31,6 +31,9 @@ func TestList(t *testing.T) {
 	t.Run("-n lists at most N notes", func(t *testing.T) {
 		equal(t, ids(t, seed(t).ok("list", "--by", "time", "-n", "1", "--json")), []string{"20200103T000000Z-000003"})
 	})
+	t.Run("--by with another value than type or time exits 2", func(t *testing.T) {
+		refused(t, newRepo(t).gm("list", "--by", "size"), "--by")
+	})
 	t.Run("a negative -n exits 2", func(t *testing.T) {
 		refused(t, newRepo(t).gm("list", "-n", "-1"), "-n")
 	})

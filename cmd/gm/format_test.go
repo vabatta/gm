@@ -31,6 +31,11 @@ func TestNoteFormat(t *testing.T) {
 		}
 		has(t, res.stdout, "20200101T000000Z-aaaaaa", "note format 2 needs a newer gm")
 	})
+	t.Run("reads a title written without JSON quotes as it is", func(t *testing.T) {
+		r := newRepo(t)
+		r.note("20200101T000000Z-aaaaaa", "type: fact\ntitle: Proxy budget\nkeywords: a b c\ncreated: 2020-01-01T00:00:00Z\n", "## Fact\nf\n\n## Evidence\ne\n")
+		has(t, r.ok("search", "proxy", "--json"), `"title": "Proxy budget"`)
+	})
 	t.Run("writes a list as a JSON array when an item holds a bracket, a quote, or a trailing space", func(t *testing.T) {
 		for _, name := range []string{"a[1].go", `q"x.go`, "trail.go "} {
 			r := newRepo(t)

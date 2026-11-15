@@ -50,7 +50,7 @@ Before you merge a branch, run `gm lint`. It fails while a note on the branch de
 
 ## How notes move with the code
 
-A note is never edited. To change one, save a new note that names the old one with `--supersedes`. Because every save adds a new file, branches that save notes in parallel merge without conflicts, whether you merge, squash, or rebase.
+No command edits a note. To change one, save a new note that names the old one with `--supersedes`. Because every save adds a new file, branches that save notes in parallel merge without conflicts, whether you merge, squash, or rebase.
 
 ```mermaid
 flowchart LR
@@ -63,7 +63,7 @@ flowchart LR
   merge --> recall[gm search and gm show on main]
 ```
 
-An anchor names a file, and optionally a line range, at the commit where the note was saved. `gm show` prints the code at that commit. After a squash or a rebase, that commit is gone, so gm reads the code at the commit that added the note instead.
+An anchor names a file, and optionally a line range, at the commit where you saved the note. `gm show` prints the code at that commit. After a squash or a rebase, that commit is gone, so gm reads the code at the commit that added the note instead.
 
 ## What a note holds
 

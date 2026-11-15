@@ -23,8 +23,8 @@ gm - keep project memory as note files in the repository, merged by git
 == DESCRIPTION
 
 *gm* keeps the memory of a project in the repository the memory is about.
-Each note is one markdown file in *.memory/notes/*. The notes are committed
-with the work, so they travel with branches and worktrees. When branches merge,
+Each note is one markdown file in *.memory/notes/*. You commit the notes with
+the work, so they travel with branches and worktrees. When branches merge,
 their notes merge with them. git is the only sync. There is no server and no
 index file.
 
@@ -33,7 +33,7 @@ why the code is this way rather than the obvious alternative, what failed and
 why, or a fact from outside the repository that the code depends on. What the
 code, its tests, its docs or the git log already say does not belong in a note.
 
-A note is never edited. A revision is a new note that names the notes it
+No command edits a note. A revision is a new note that names the notes it
 replaces with *--supersedes*. A note that some other note supersedes is
 history: it stays on disk, but *search* and *list* hide it. The notes
 that no note supersedes are the _live_ notes.
@@ -48,7 +48,7 @@ file, and optionally a line range, at one commit. The commit never changes, so
 *gm show* prints the code that the note was written against, and *gm lint*
 reports when that code leaves the branch history or the file disappears.
 
-The file format is described in *gm-note*(5).
+*gm-note*(5) describes the file format.
 
 Run every command inside a git worktree. Paths in anchors are relative to the
 root of the worktree.
@@ -69,8 +69,8 @@ Flags and words can come in any order. A word that belongs to no flag is an
 error, because it usually means an unquoted flag value.
 
 *retire* _ID_...::
-  Write a retirement: a note that supersedes the notes _ID_... and has no
-  successor. *--why* is required. Print the retirement's id and path.
+  Write a retirement, a note that supersedes the notes _ID_... and has no
+  successor, and print its id and path. *retire* needs *--why*.
 
 *search* _WORDS_...::
   Print the live notes that contain any of _WORDS_, best match first. See
@@ -78,11 +78,12 @@ error, because it usually means an unquoted flag value.
 
 *show* _ID_::
   Print the note file, then the code of each anchor, read at the anchor's
-  base commit (see *ANCHORS*). When the base is not the anchor's own commit,
-  the heading of the anchor names it. A line-range anchor shows its lines, numbered. A whole-file anchor
-  shows the first 40 lines. An anchor whose code git cannot read shows the
-  reason instead. A pruned note is read from git history, and a first line
-  names the commit that pruned it. See *PRUNING*.
+  base commit. See *ANCHORS*. When the base is not the anchor's own commit,
+  the heading of the anchor names it. A line-range anchor shows its lines,
+  numbered. A whole-file anchor shows the first 40 lines. An anchor whose code
+  git cannot read shows the reason instead. For a pruned note, *show* reads
+  the file from git history and prints a first line that names the commit
+  that pruned it. See *PRUNING*.
 
 *lint*::
   Check every note and print one line per problem. See *LINT*.
@@ -96,7 +97,7 @@ error, because it usually means an unquoted flag value.
 
 *import* _SOURCE_ _FILE_::
   Write one note for each memory in _FILE_, an export from another memory
-  tool. _SOURCE_ names the tool; see *IMPORT* for the sources gm reads.
+  tool. _SOURCE_ names the tool. *IMPORT* lists the sources gm reads.
 
 *help*, *-h*, *--help*::
   Print a summary of the commands.
@@ -135,12 +136,14 @@ error, because it usually means an unquoted flag value.
   For *search*, only notes of this type.
 
 *--all*::
-  For *search* and *list*, include superseded notes, also the ones pruned
-  from the working tree, read from git history. *search* marks them
-  *(superseded)*, and a pruned note also with the commit that pruned it.
+  For *search* and *list*, include superseded notes. *gm* reads the notes
+  pruned from the working tree from git history. *search* marks each
+  superseded note *(superseded)*, and adds the commit that pruned it for a
+  pruned note.
 
 *--by* *type*|*time*::
-  For *list*, group by type (the default) or print newest first without groups.
+  For *list*, group by type, which is the default, or print the newest first
+  without groups.
 
 *--review*::
   For *lint*, also list the anchors whose code changed since their commit.
@@ -174,19 +177,19 @@ __COMMIT__:__PATH__[:__FROM__[-__TO__]].
 * the path is empty;
 * the file is not committed at HEAD;
 * the file has uncommitted changes, because the anchor must show the code that
-  the note describes (commit the code first, then save the note);
+  the note describes. Commit the code first, then save the note;
 * the line range is not _N_ or _N_-_M_ with _N_ at least 1 and _M_ at least
   _N_, or it ends past the last line of the file.
 
-When __PATH__[:__LINES__] as a whole names a committed file, it is taken as the
-path, so a file name that contains *:* needs no escaping.
+When __PATH__[:__LINES__] as a whole names a committed file, *save* takes it as
+the path, so a file name that contains *:* needs no escaping.
 
 *gm* reads an anchor at a _base_ commit:
 
 * the anchor's own commit, while it is in the history of HEAD;
 * otherwise the commit that added the note, which a squash or rebase merge
   leaves in place of the anchor's commit. That commit holds the code the note
-  describes, because the code is committed before or with the note;
+  describes, because you commit the code before the note or with it;
 * otherwise HEAD, for a note that is not committed yet.
 
 So anchors keep working after a merge commit, a squash merge and a rebase
@@ -204,7 +207,7 @@ supersedes both.
 
 == PRUNING
 
-Notes are never edited, so superseded notes pile up. *gm* reads every file in
+No command edits a note, so superseded notes pile up. *gm* reads every file in
 *.memory/notes/* for every command, so they also slow it down. *gm prune*
 deletes them from the working tree, and git history keeps them.
 
@@ -215,11 +218,11 @@ prints *pruned* _PATH_ for each deleted file and *kept* _PATH_ for each kept
 superseded note. Commit the deletions on a branch like any other change.
 
 A pruned note stays readable. *show* _ID_ reads it from git history, as the
-file was when a commit deleted it. *search --all* and *list --all* include it. *lint* accepts
-a *supersedes* entry that names a pruned note.
+file was when a commit deleted it. *search --all* and *list --all* include
+it. *lint* accepts a *supersedes* entry that names a pruned note.
 
-Branches merge as before: a note file that one branch deleted and the other
-left unchanged ends up deleted. A shallow clone lacks the history that holds
+Branches merge as before. When one branch deletes a note file and the other
+leaves it unchanged, the merge deletes it. A shallow clone lacks the history that holds
 pruned notes, so there *show* cannot find them and *--all* leaves them out.
 
 == SEARCH
@@ -228,12 +231,12 @@ pruned notes, so there *show* cannot find them and *--all* leaves them out.
 drops common English words such as _the_, _what_ and _why_. A note matches when
 it contains any remaining word. The query must keep at least one word.
 
-Matches are ranked with BM25. A word counts 5 times in the title, 3 times in the
+*search* ranks matches with BM25. A word counts 5 times in the title, 3 times in the
 keywords, topic and anchor paths, and once in the body. When two notes score
 the same, the older note comes first.
 
-Each result is printed as the id, the type, the creation date and the title,
-then the path of the note file on the next line.
+*search* prints each result as the id, the type, the creation date and the
+title, then the path of the note file on the next line.
 
 == LINT
 
@@ -243,8 +246,8 @@ then the path of the note file on the next line.
 * an id used by more than one file;
 * a *supersedes* entry that names no note, neither on disk nor pruned in the
   history of HEAD;
-* a live note that breaks a rule for a new note (migrated notes are checked
-  only for title, keywords and topic);
+* a live note that breaks a rule for a new note. *lint* checks a migrated note
+  only for its title, keywords and topic;
 * an anchor of a live note whose file is gone at HEAD; when git sees the file
   as renamed since the base, the problem names the new path;
 * a line-range anchor of a live note that is not yet on the default branch,
@@ -260,9 +263,9 @@ checks only that their files exist at HEAD, and prints a *warning:* line that
 says how many commits it could not check. A warning does not fail *lint*.
 
 With *--review*, *lint* also prints a *review:* line for each other anchor of a
-live note whose code changed after the base. For a line
-range, only changes to those lines count, followed from the base even when
-lines above them were added or removed. A review line does not fail *lint*.
+live note whose code changed after the base. For a line range, only changes
+to those lines count. *lint* follows the lines from the base, also when
+commits added or removed lines above them. A review line does not fail *lint*.
 
 == IMPORT
 
@@ -270,9 +273,9 @@ lines above them were added or removed. A review line does not fail *lint*.
 the same way for every source:
 
 * each memory becomes one note with a new id, made from its creation time;
-* a memory that replaces another one supersedes it, when both are imported;
-* a title longer than 120 characters, or on several lines, is shortened, and
-  the full title opens the body;
+* a memory that replaces another one supersedes it, when *import* writes both;
+* *import* shortens a title that is longer than 120 characters or on several
+  lines, and opens the body with the full title;
 * spaces in a topic become hyphens;
 * the *migrated* header records the source, the memory's id there and its type
   there, and exempts the note from the section templates.
@@ -300,7 +303,8 @@ The sources:
   commit, and *error* when git cannot read the code.
 
 *lint --json*::
-  An object with *problems* (always present), *review* and *warnings*.
+  An object with *problems*, which is always present, and *review* and
+  *warnings*.
 
 *list --json*::
   An array of notes without their bodies.

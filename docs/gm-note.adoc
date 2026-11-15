@@ -15,7 +15,7 @@ gm-note - format of a gm memory note file
 
 A note file is UTF-8 text. It starts with a header between two lines that hold
 only *---*, followed by the body. *gm save* writes the file, and nothing edits it
-afterwards. CRLF line ends are accepted when the file is read.
+afterwards. *gm* also reads files with CRLF line ends.
 
 == FILE NAME
 
@@ -29,7 +29,8 @@ and *0-9* replaced by one hyphen, cut to 48 characters.
 
 == HEADER
 
-One *key: value* per line, in this order. Optional keys are left out when empty.
+One *key: value* per line, in this order. *gm save* leaves out an optional key
+when it is empty.
 A reader ignores keys it does not know.
 
 *id*:: The note id.
@@ -45,11 +46,12 @@ A reader ignores keys it does not know.
 *format*:: Optional. The version of this file format. A note without it is
   format 1, which this page describes, and *gm* writes format 1 without the
   key. A reader refuses a format it does not know instead of misreading the
-  note: search, show and list leave the note out, and *gm lint* fails with
-  _FILE_*: note format* _N_ *needs a newer gm*.
+  note. *search*, *show* and *list* then leave the note out, and *gm lint*
+  fails with _FILE_*: note format* _N_ *needs a newer gm*.
 
-A list is written as *[a, b]*. When an item holds a comma, a bracket, a quote, or
-a leading or trailing space, the whole list is written as a JSON array instead.
+*gm* writes a list as *[a, b]*. When an item holds a comma, a bracket, a quote,
+or a leading or trailing space, *gm* writes the whole list as a JSON array
+instead.
 
 == BODY
 
@@ -62,15 +64,15 @@ The body is one section per heading of the note type, in this order:
 *retirement*:: *+## Why+*
 
 A section holds 1 to 800 characters. A note with a *migrated* header keeps the
-body it was imported with and need not follow these sections.
+body that *gm import* wrote, and need not follow these sections.
 
 == ANCHORS
 
 An anchor is _COMMIT_:_PATH_, optionally followed by *:*_N_ for one line or
-*:*_N_*-*_M_ for lines _N_ to _M_. _COMMIT_ is 7 to 40 lowercase hex characters:
-HEAD when the note was saved. After a squash or rebase merge, that commit may
-no longer exist, and *gm* reads the anchor at the commit that added the note
-instead; see *gm*(1), *ANCHORS*.
+*:*_N_*-*_M_ for lines _N_ to _M_. _COMMIT_ is 7 to 40 lowercase hex characters
+that name the commit at HEAD when *gm save* ran. After a squash or rebase
+merge, that commit may no longer exist, and *gm* reads the anchor at the
+commit that added the note instead. See *gm*(1), *ANCHORS*.
 _PATH_ is relative to the repository root and may contain *:*.
 
 When _PATH_ itself ends in *:* or in a part shaped like *:*_N_ or *:*_N_*-*_M_,

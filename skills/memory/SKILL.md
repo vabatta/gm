@@ -1,6 +1,6 @@
 ---
 name: memory
-description: "Saves and recalls project memory as note files committed in the repository, through the gm command, so notes travel with branches and align when they merge. Use when starting work in a repo, before reading code to answer a question the project may already have answered, and after a decision, lesson, or fact that a later agent would otherwise rediscover. Trigger on remember this, what did we decide, have we seen this before, save a note, or recall."
+description: "Saves and recalls project memory as note files committed in the repository, through the gm command, so notes travel with branches and merge with them. Use when starting work in a repo, before reading code to answer a question the project may already have answered, and after a decision, lesson, or fact that a later agent would otherwise rediscover. Trigger on remember this, what did we decide, have we seen this before, save a note, or recall."
 ---
 
 # Memory
@@ -9,7 +9,7 @@ Project memory lives in the repository it is about, one note per file in `.memor
 
 ## Recall before you work
 
-At the start of a task, and before reading code to answer a question, run `gm search` with the words of the question. When the first search misses, search again with two rewordings: synonyms, the module name, the error text. For what came before or how something changed, search with `--all`, which adds superseded notes, also those pruned into git history. Read a hit with `gm show ID`, which prints the note and the code its anchors point at, read from the commit the note was written against. Done when a note answers the question or three searches found nothing.
+At the start of a task, and before reading code to answer a question, run `gm search` with the words of the question. When the first search misses, search again with two rewordings that use synonyms, the module name, or the error text. For what came before or how something changed, search with `--all`, which adds superseded notes, also those pruned into git history. Read a hit with `gm show ID`. It prints the note and the code its anchors point at, as that code was when the note was written. Done when a note answers the question or three searches found nothing.
 
 A note is evidence from the time it was written, not a fact about the code now. When `gm show` and the current code disagree, the code wins. Save a revision.
 
@@ -38,13 +38,13 @@ In a decision, the Decision section names the choice in one line. The Why and Re
 Save when the work taught you something that passes the test above.
 
 1. Commit the code the note is about. `gm save --at` refuses files with uncommitted changes, so the anchor shows the code the note describes. Done when `git status` is clean for those files.
-2. Pick the type: `decision` (decision, why, rejected), `lesson` (happened, cause, rule), or `fact` (fact, evidence). Write the title as a one-line claim. Write at least three `--keywords`, including the words someone would search with that the note itself does not use. Anchor every file the note is about with `--at path[:from-to]`, the path taken from the repository root. Give a `--topic` when the note may be revised later. Done when every flag of the type has a value.
+2. Pick the type: `decision` (decision, why, rejected), `lesson` (happened, cause, rule), or `fact` (fact, evidence). Write the title as a one-line claim. Write at least three `--keywords`, including the words someone would search with that the note itself does not use. Anchor every file the note is about with `--at path[:from-to]`, with the path relative to the repository root. Give a `--topic` when a later note may revise this one. Done when every flag of the type has a value.
 3. Run `gm save TYPE ...` from the repository root. When it refuses, fix every listed problem and run it again. When it warns that the topic has other live notes, decide whether the new note replaces them, and if so save it again with `--supersedes ID` for each one it replaces. Done when `gm save` prints the new note's id and path.
 4. Commit the note on the same branch as the work. Done when the note file is committed.
 
-A note is never edited. To change one, save a new note with `--supersedes ID`. To withdraw one with no successor, run `gm retire ID --why "..."`, and say in the reason what replaced it. Done when the new note or retirement is committed.
+Do not edit a note. To change one, save a new note with `--supersedes ID`. To withdraw one with no successor, run `gm retire ID --why "..."`, and say in the reason what replaced it. Done when the new note or retirement is committed.
 
-`gm prune` deletes superseded notes from the working tree; `gm show` and `--all` still read them from git history. Prune only when the person asks, then commit the deletions. Done when the prune commit is in.
+`gm prune` deletes superseded notes from the working tree. `gm show` and `--all` still read them from git history. Prune only when the person asks, then commit the deletions. Done when the prune commit is in.
 
 ## Check before you hand over
 

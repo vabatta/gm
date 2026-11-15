@@ -64,7 +64,13 @@ func (Ranker) Rank(ns []note.Note, terms []string) []float64 {
 	avg := float64(total) / float64(max(len(ns), 1))
 	scores := make([]float64, len(ns))
 	for i, tf := range tfs {
-		for w, f := range tf {
+		// Sum in the order of terms, not of the map: float addition depends
+		// on order, and near-tied notes would swap places between runs.
+		for _, w := range terms {
+			f := tf[w]
+			if f == 0 {
+				continue
+			}
 			idf := max(math.Log((float64(len(ns)-df[w])+0.5)/(float64(df[w])+0.5)), 1e-6)
 			scores[i] += idf * f * (k1 + 1) / (f + k1*(1-b+b*float64(lens[i])/avg))
 		}

@@ -52,12 +52,17 @@ func (s *Store) Lint(review bool) Report {
 	heads := map[string][]string{}
 	var live []note.Note
 	var pruned map[string]bool // read from git only when a supersedes entry names no note on disk
+	unseenIDs := 0             // supersedes entries a shallow clone cannot check
 	for _, n := range ns {
 		for _, id := range n.Supersedes {
 			if files[id] == nil && pruned == nil {
 				pruned = s.prunedIDs()
 			}
-			if files[id] == nil && !pruned[id] {
+			switch {
+			case files[id] != nil || pruned[id]:
+			case s.shallow():
+				unseenIDs++
+			default:
 				report("%s: supersedes unknown note %s", n.File, id)
 			}
 		}
@@ -107,6 +112,9 @@ func (s *Store) Lint(review bool) Report {
 		return slices.ContainsFunc(resolved[n.File], func(r anchor.Resolved) bool { return r.Anchor.From > 0 })
 	}) {
 		rep.Warnings = append(rep.Warnings, "no default branch (origin/HEAD, main, master, origin/main or origin/master), so line-range anchors on this branch were not checked for code that changed after the note")
+	}
+	if unseenIDs > 0 {
+		rep.Warnings = append(rep.Warnings, fmt.Sprintf("shallow clone: %d supersedes entries name notes that are not here and may be pruned in history the clone lacks; fetch the full history to check them", unseenIDs))
 	}
 	if unseen > 0 {
 		rep.Warnings = append(rep.Warnings, fmt.Sprintf("shallow clone: %d anchor commits are not here, so only their files were checked; fetch the full history to check them", unseen))

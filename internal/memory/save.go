@@ -46,6 +46,9 @@ func (s *Store) Retire(ids []string, why string) (Saved, error) {
 	var titles []string
 	for _, id := range ids {
 		n, err := s.Get(id)
+		if err != nil && s.shallow() {
+			return Saved{}, errors.New(err.Error() + fetchHint)
+		}
 		if err != nil {
 			return Saved{}, err
 		}
@@ -78,7 +81,11 @@ func (s *Store) create(n note.Note, problems []string) (Saved, error) {
 		if !ids[id] && pruned == nil {
 			pruned = s.prunedIDs()
 		}
-		if !ids[id] && !pruned[id] {
+		switch {
+		case ids[id] || pruned[id]:
+		case s.shallow():
+			problems = append(problems, "supersedes unknown note "+id+fetchHint)
+		default:
 			problems = append(problems, "supersedes unknown note "+id)
 		}
 	}

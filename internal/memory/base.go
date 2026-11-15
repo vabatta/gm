@@ -93,3 +93,14 @@ func (s *Store) onDefault() map[string]bool {
 	}
 	return m
 }
+
+// shallow reports whether the repository is a shallow clone, which lacks the
+// older history that holds pruned notes and old anchor commits.
+func (s *Store) shallow() bool {
+	out, _ := s.Git.Run("rev-parse", "--is-shallow-repository")
+	return out == "true"
+}
+
+// fetchHint is what gm adds to an error about an id it cannot find in a
+// shallow clone, where the id may name a note pruned in the missing history.
+const fetchHint = "; this shallow clone lacks the history that may hold it, so fetch the full history"

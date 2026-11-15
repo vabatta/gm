@@ -8,6 +8,7 @@
 package importer
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -44,12 +45,27 @@ type Result struct{ Notes, Links int }
 // supersedes link only when the export holds both records. It cuts a title on
 // several lines or longer than note.MaxTitle, and the full title becomes the
 // first paragraph of the body. The migrated header records the source, the
-// record's id and its kind. It also exempts the note from the section
-// templates, which other tools' text does not follow.
+// record's id and its kind, on one line, so an id cannot add header keys. It
+// also exempts the note from the section templates, which other tools' text
+// does not follow.
+//
+// Import checks every record before it writes any note, so a bad export
+// writes nothing. It returns an error when two records share an id, which
+// would make a link ambiguous, or when a record has no title.
 func Import(st *memory.Store, src Source, file string) (Result, error) {
 	recs, err := src.Read(file)
 	if err != nil {
 		return Result{}, err
+	}
+	seen := map[string]bool{}
+	for _, r := range recs {
+		switch {
+		case seen[r.ID]:
+			return Result{}, fmt.Errorf("import writes nothing: two memories have the id %q", r.ID)
+		case strings.TrimSpace(r.Title) == "":
+			return Result{}, fmt.Errorf("import writes nothing: memory %q has no title", r.ID)
+		}
+		seen[r.ID] = true
 	}
 	var res Result
 	ids := map[string]string{} // source id -> new note id
@@ -76,7 +92,7 @@ func Import(st *memory.Store, src Source, file string) (Result, error) {
 		n := note.Note{
 			ID: ids[r.ID], Type: r.Type, Title: title, Topic: strings.Join(strings.Fields(r.Topic), "-"),
 			Supersedes: sup, Created: created[r.ID].UTC().Format(time.RFC3339),
-			Migrated: src.Name() + " " + r.ID + " (" + r.Kind + ")", Body: body + "\n",
+			Migrated: oneLine(src.Name() + " " + r.ID + " (" + r.Kind + ")"), Body: body + "\n",
 		}
 		if _, err := st.Write(n); err != nil {
 			return res, err
@@ -85,3 +101,7 @@ func Import(st *memory.Store, src Source, file string) (Result, error) {
 	}
 	return res, nil
 }
+
+// oneLine joins the words of s with single spaces, so line breaks in a
+// source's ids or types cannot start a new header line.
+func oneLine(s string) string { return strings.Join(strings.Fields(s), " ") }

@@ -213,13 +213,16 @@ deletes them from the working tree, and git history keeps them.
 
 *prune* deletes the file of every note that another note supersedes. It keeps
 live notes, retirements included. It also keeps a superseded note whose file is
-not committed as it is at HEAD, because no commit would keep that note. It
+not committed as it is at HEAD, a file that git ignores included, because no
+commit would keep that note. It
 prints *pruned* _PATH_ for each deleted file and *kept* _PATH_ for each kept
 superseded note. Commit the deletions on a branch like any other change.
 
 A pruned note stays readable. *show* _ID_ reads it from git history, as the
 file was when a commit deleted it. *search --all* and *list --all* include
-it. *lint* accepts a *supersedes* entry that names a pruned note.
+it. *lint*, *save --supersedes* and *retire* accept the id of a pruned note. A
+commit that deletes a note and adds a similar one still counts as the commit
+that pruned the note.
 
 Branches merge as before. When one branch deletes a note file and the other
 leaves it unchanged, the merge deletes it. A shallow clone lacks the history that holds

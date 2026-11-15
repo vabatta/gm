@@ -76,6 +76,37 @@ func TestPruning(t *testing.T) {
 			t.Fatalf("want a clean lint, got %q", out)
 		}
 	})
+	t.Run("keeps a superseded note whose file git ignores", func(t *testing.T) {
+		r := newRepo(t)
+		r.write(".gitignore", ".memory/\n")
+		r.commit("ignore notes")
+		old := r.fact("Fetch retries twice")
+		r.fact("Fetch retries five times", "--supersedes", old)
+		has(t, r.ok("prune"), "kept .memory/notes/"+old+"-")
+		if n := len(r.notes()); n != 2 {
+			t.Fatalf("want both notes kept, got %d", n)
+		}
+	})
+	t.Run("reads a note pruned in the same commit that adds a similar revision", func(t *testing.T) {
+		r := newRepo(t)
+		body := []string{"--fact", strings.Repeat("Fetch retries with exponential backoff and jitter. ", 12), "--evidence", strings.Repeat("Measured in the staging load test. ", 12)}
+		old := r.fact("Fetch retries twice", body...)
+		r.commit("note")
+		r.fact("Fetch retries twice, then stops", append(body, "--supersedes", old)...)
+		r.ok("prune")
+		r.commit("revise and prune")
+		has(t, r.ok("show", old), "# pruned in "+r.head()+"\n")
+		if out := r.ok("lint"); out != "" {
+			t.Fatalf("want a clean lint, got %q", out)
+		}
+	})
+	t.Run("save --supersedes and retire accept the id of a pruned note", func(t *testing.T) {
+		r, old, revision, _ := pruned(t)
+		r.ok("prune")
+		r.commit("prune")
+		r.fact("Fetch retries seven times", "--supersedes", old, "--supersedes", revision)
+		r.ok("retire", old, "--why", "Fetch no longer retries")
+	})
 	t.Run("a note file that one branch deleted and the other left unchanged ends up deleted", func(t *testing.T) {
 		r, old, _, _ := pruned(t)
 		r.git("checkout", "-qb", "work")

@@ -70,9 +70,10 @@ func init() {
 func Words(s string) []string { return wordRe.FindAllString(strings.ToLower(s), -1) }
 
 // Find returns at most q.Limit notes that match q, best first, as r ranks
-// them. r scores every note on disk, superseded ones included, so corpus
-// statistics do not depend on --all. With q.All, Find adds the pruned notes
-// from git history. Notes with equal scores keep file order, so the older note
+// them. r scores every note on disk, superseded ones included, so hiding
+// superseded notes does not change the scores of the rest. With q.All, Find
+// also reads the pruned notes from git history, and r scores those too, so
+// they count in the corpus statistics of that search. Notes with equal scores keep file order, so the older note
 // comes first. Find returns an error when no query word is left after it drops
 // the stop words.
 func Find(st *memory.Store, r Ranker, q Query) ([]Hit, error) {

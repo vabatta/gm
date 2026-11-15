@@ -1,8 +1,11 @@
-# Installs gm and, for Claude Code, links the memory skill.
+# Installs gm and links the memory skill for Claude Code, Codex, or both.
 self:
 { config, lib, pkgs, ... }:
 let
   cfg = config.programs.gm;
+  # The skill comes from the package, so an override of the package also
+  # overrides the skill, and both describe the same gm.
+  skill = "${cfg.package}/share/gm/skills/memory";
 in
 {
   options.programs.gm = {
@@ -18,12 +21,20 @@ in
       default = true;
       description = "Link the memory skill into ~/.claude/skills for Claude Code.";
     };
+    codex = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Link the memory skill into ~/.agents/skills, where Codex reads personal
+        skills. Off by default, because a configuration that links all of
+        ~/.agents/skills as one directory cannot also hold this link.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable (lib.mkMerge [
     { home.packages = [ cfg.package ]; }
-    (lib.mkIf cfg.claudeCode {
-      home.file.".claude/skills/memory".source = "${cfg.package}/share/gm/skills/memory";
-    })
+    (lib.mkIf cfg.claudeCode { home.file.".claude/skills/memory".source = skill; })
+    (lib.mkIf cfg.codex { home.file.".agents/skills/memory".source = skill; })
   ]);
 }

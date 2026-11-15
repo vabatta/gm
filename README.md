@@ -23,6 +23,8 @@ programs.gm.enable = true;
 
 The module installs the `gm` binary and the man pages gm(1) and gm-note(5). For Claude Code, it also links the memory skill into `~/.claude/skills/memory`. To install only the binary and the man pages, set `programs.gm.claudeCode = false`.
 
+To link the skill for Codex too, set `programs.gm.codex = true`. The module then links `~/.agents/skills/memory`, where Codex reads personal skills. If your configuration links all of `~/.agents/skills` as one directory with `home.file`, set `recursive = true` on that entry, or the home-manager build fails with "Error installing file '.agents/skills/memory' outside $HOME".
+
 ## Save and find a note
 
 Run every command from the root of a git repository.

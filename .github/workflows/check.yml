@@ -3,6 +3,7 @@ on:
   pull_request:
   push:
     branches: [main]
+    tags: ['v*']
 jobs:
   flake-check:
     runs-on: ubuntu-latest
@@ -10,3 +11,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
       - run: nix flake check -L
+      # A release tag vX.Y.Z must match the version in package.nix, which the
+      # binary and the man pages print.
+      - if: startsWith(github.ref, 'refs/tags/v')
+        run: test "${GITHUB_REF_NAME#v}" = "$(nix eval --raw .#default.version)"

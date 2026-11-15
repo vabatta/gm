@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
+	"strings"
 
 	"github.com/vabatta/gm/internal/memory"
 )
@@ -36,8 +38,23 @@ The manual is gm(1); the note format is gm-note(5).
 Exit status: 0 ok, 1 lint found problems, 2 error.
 `
 
-// version is the gm version, set at build time with -ldflags "-X main.version=...".
-var version = "dev"
+// version is the gm version without a leading "v", such as 0.1.0. The nix
+// package sets it with -ldflags "-X main.version=...". Without it, the Go
+// toolchain's build info supplies it: go install github.com/vabatta/gm/cmd/gm@v0.1.0
+// records v0.1.0 there, and go build in a checkout records a pseudo-version
+// of the commit, such as 0.0.0-20261115122924-d5a43d04d3e4. A build with no
+// version from either, such as go run, prints dev.
+var version = ""
+
+func init() {
+	if version != "" {
+		return
+	}
+	version = "dev"
+	if bi, ok := debug.ReadBuildInfo(); ok && bi.Main.Version != "" && bi.Main.Version != "(devel)" {
+		version = strings.TrimPrefix(bi.Main.Version, "v")
+	}
+}
 
 func main() { os.Exit(run(os.Args[1:], ".", os.Stdout, os.Stderr)) }
 

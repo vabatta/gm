@@ -61,7 +61,8 @@ func (s *Store) Retire(ids []string, why string) (Saved, error) {
 
 // create gives n its id and creation time, checks it, writes it, and finds the
 // other live notes of its topic. problems holds problems found earlier, such
-// as anchors that Pin refused.
+// as anchors that Pin refused. A supersedes id may name a note on disk or one
+// pruned into git history.
 func (s *Store) create(n note.Note, problems []string) (Saved, error) {
 	now := time.Now()
 	n.ID, n.Created = note.NewID(now), now.UTC().Format(time.RFC3339)
@@ -70,8 +71,12 @@ func (s *Store) create(n note.Note, problems []string) (Saved, error) {
 	for _, x := range ns {
 		ids[x.ID] = true
 	}
+	var pruned map[string]bool // read from git only when an id names no note on disk
 	for _, id := range n.Supersedes {
-		if !ids[id] {
+		if !ids[id] && pruned == nil {
+			pruned = s.prunedIDs()
+		}
+		if !ids[id] && !pruned[id] {
 			problems = append(problems, "supersedes unknown note "+id)
 		}
 	}

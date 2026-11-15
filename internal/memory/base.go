@@ -10,8 +10,10 @@ import (
 
 // added maps each note file to the newest commit in the history of HEAD that
 // added it, with one git log call. A note that is not committed has no entry.
+// --no-renames keeps git from reporting a note added next to a similar deleted
+// note as a rename, which would hide the addition.
 func (s *Store) added() map[string]string {
-	out, _ := s.Git.Run("log", "--diff-filter=A", "--name-only", "--format=commit %H", "--", notesPath)
+	out, _ := s.Git.Run("log", "--no-renames", "--diff-filter=A", "--name-only", "--format=commit %H", "--", notesPath)
 	m := map[string]string{}
 	commit := ""
 	for line := range strings.SplitSeq(out, "\n") {

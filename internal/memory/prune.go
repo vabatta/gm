@@ -16,12 +16,13 @@ const notesPath = ".memory/notes"
 // Prune deletes the file of every note that another note supersedes and
 // returns the paths it deleted. A superseded note whose file is not committed
 // as it is at HEAD has no commit that would keep it, so Prune keeps it and
-// returns its path in kept. Prune leaves live notes, retirements included, in
+// returns its path in kept. That includes a file that git ignores, which git
+// status lists only with --ignored. Prune leaves live notes, retirements included, in
 // place.
 func (s *Store) Prune() (pruned, kept []string, err error) {
 	ns, _ := s.Load()
 	dead := Dead(ns)
-	status, err := s.Git.Run("status", "--porcelain", "--untracked-files=all", "--", notesPath)
+	status, err := s.Git.Run("status", "--porcelain", "--untracked-files=all", "--ignored", "--", notesPath)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -53,10 +54,12 @@ type prunedFile struct{ commit, path, blob string }
 // prunedFiles lists the note files deleted in the history of HEAD, newest
 // deletion first, with one git log --raw call. The raw diff names the blob
 // of each deleted file, so Pruned can read the note by blob id without walking
-// the tree of the commit before. In a shallow clone it lists only the
-// deletions in the history the clone has.
+// the tree of the commit before. --no-renames keeps git from pairing a deleted
+// note with a similar note added in the same commit, which would hide the
+// deletion. In a shallow clone it lists only the deletions in the history the
+// clone has.
 func (s *Store) prunedFiles() []prunedFile {
-	out, err := s.Git.Run("log", "--diff-filter=D", "--raw", "--no-abbrev", "--format=commit %H", "--", notesPath)
+	out, err := s.Git.Run("log", "--no-renames", "--diff-filter=D", "--raw", "--no-abbrev", "--format=commit %H", "--", notesPath)
 	if err != nil {
 		return nil
 	}

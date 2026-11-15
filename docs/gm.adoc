@@ -340,6 +340,11 @@ their options, the *--json* output, the exit status, and the note format of
 release adds to them. A major release may change them. Before 1.0.0, a minor
 release may also change them, and the release notes say how.
 
+*gm --version* prints the version. The nix package adds the commit it was
+built from as build metadata, such as *0.1.0+3a85ea8*, or *0.1.0+3a85ea8-dirty*
+for a checkout with uncommitted changes, so a build from any commit names that
+commit.
+
 The note format has its own number, the *format* header key of *gm-note*(5). A
 release of *gm* reads every note format that an earlier release wrote.
 

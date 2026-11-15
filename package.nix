@@ -1,4 +1,6 @@
-{ lib, buildGoModule, git, openssh, makeWrapper, asciidoctor, installShellFiles }:
+{ lib, buildGoModule, git, openssh, makeWrapper, asciidoctor, installShellFiles
+, rev ? null # the commit the flake is built from, added to the version as build metadata
+}:
 buildGoModule (finalAttrs: {
   pname = "gm";
   version = "0.1.0";
@@ -8,7 +10,7 @@ buildGoModule (finalAttrs: {
   };
   vendorHash = null; # standard library only
   env.CGO_ENABLED = "0";
-  ldflags = [ "-s" "-w" "-X main.version=${finalAttrs.version}" ];
+  ldflags = [ "-s" "-w" "-X main.version=${finalAttrs.version}${lib.optionalString (rev != null) "+${rev}"}" ];
   # The specs run gm against real git repositories; ssh-keygen signs commits
   # for the log.showSignature case of the git config matrix.
   nativeCheckInputs = [ git openssh ];
@@ -29,7 +31,7 @@ buildGoModule (finalAttrs: {
     test -s $out/share/man/man1/gm.1.gz
     test -s $out/share/man/man5/gm-note.5.gz
     test -s $out/share/gm/skills/memory/SKILL.md
-    test "$($out/bin/gm --version)" = "gm ${finalAttrs.version}"
+    test "$($out/bin/gm --version)" = "gm ${finalAttrs.version}${lib.optionalString (rev != null) "+${rev}"}"
     runHook postInstallCheck
   '';
   meta = {

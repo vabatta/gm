@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -96,13 +97,23 @@ func onDisk(r *repo, id string) bool {
 	return slices.ContainsFunc(r.notes(), func(f string) bool { return strings.HasPrefix(filepath.Base(f), id+"-") })
 }
 
-// moveTo sets gm.dir in .gmconfig to dir, moves the notes there from .memory
-// with git mv, and commits the move.
-func moveTo(r *repo, dir string) {
+// legacyRepo makes a repository like newRepo whose notes go to .memory/notes,
+// as in a repository from an earlier release.
+func legacyRepo(t *testing.T) *repo {
+	t.Helper()
+	r := newRepo(t)
+	if err := os.MkdirAll(filepath.Join(r.dir, ".memory", "notes"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return r
+}
+
+// moveToDefault moves the notes from .memory/notes to .agents/memory with git
+// mv and commits the move.
+func moveToDefault(r *repo) {
 	r.t.Helper()
-	r.setDir(dir)
-	r.write(filepath.Join(filepath.Dir(dir), ".keep"), "")
-	r.git("mv", ".memory", dir)
+	r.write(".agents/.keep", "")
+	r.git("mv", ".memory/notes", ".agents/memory")
 	r.commit("move notes")
 }
 
@@ -142,8 +153,8 @@ func localShapes() []histShape {
 			runPrep(prep, r, id)
 			return histScenario{r: r, id: id, file: "fetch.go", line: histRetry, anchor: a, added: added}
 		}},
-		{name: "squash merge, then notes moved to .agents/memory", base: baseAdded, build: func(t *testing.T, prep histPrep) histScenario {
-			r := newRepo(t)
+		{name: "squash merge in .memory/notes, then notes moved to .agents/memory", base: baseAdded, build: func(t *testing.T, prep histPrep) histScenario {
+			r := legacyRepo(t)
 			id, a := feature(r)
 			moves(r, "main")
 			r.git("merge", "-q", "--squash", "feat")
@@ -151,7 +162,7 @@ func localShapes() []histShape {
 			added := r.head()
 			r.git("branch", "-qD", "feat")
 			runPrep(prep, r, id)
-			moveTo(r, ".agents/memory")
+			moveToDefault(r)
 			return histScenario{r: r, id: id, file: "fetch.go", line: histRetry, anchor: a, added: added}
 		}},
 		{name: "rebase then fast-forward, branch deleted", base: baseAdded, build: func(t *testing.T, prep histPrep) histScenario {
@@ -301,7 +312,7 @@ func localShapes() []histShape {
 			r.commit("main")
 			r.git("merge", "-q", "--no-ff", "--no-commit", "feat2")
 			r.fact("Fetch retries, revised in the merge", "--supersedes", id)
-			has(t, r.ok("prune"), "pruned .memory/notes/"+id+"-")
+			has(t, r.ok("prune"), "pruned .agents/memory/"+id+"-")
 			r.commit("merge feat2, revise and prune")
 			deleted := r.head()
 			runPrep(prep, r, id)
@@ -545,7 +556,7 @@ func prunedScenario(t *testing.T, sh histShape) (histScenario, string) {
 		if !onDisk(r, id) {
 			return
 		}
-		has(t, r.ok("prune"), "pruned .memory/notes/"+id+"-")
+		has(t, r.ok("prune"), "pruned ", "/"+id+"-")
 		r.commit("prune")
 		prunedIn = r.head()
 	})
@@ -716,7 +727,7 @@ func noCommitCells() []histCell {
 		r.fact("Fetch retries, revised", "--supersedes", old)
 		// The superseded note is not committed, so prune keeps it.
 		out := r.ok("prune")
-		has(t, out, "kept .memory/notes/"+old+"-")
+		has(t, out, "kept .agents/memory/"+old+"-")
 		lacks(t, out, "pruned ")
 		return r, old
 	}

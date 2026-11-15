@@ -115,6 +115,6 @@ func TestSearch(t *testing.T) {
 	t.Run("--json prints id, type, created, title, file and score", func(t *testing.T) {
 		r := newRepo(t)
 		r.fact("Proxy budget")
-		has(t, r.ok("search", "proxy", "--json"), `"id"`, `"type": "fact"`, `"created"`, `"title": "Proxy budget"`, `"file": ".memory/notes/`, `"score"`)
+		has(t, r.ok("search", "proxy", "--json"), `"id"`, `"type": "fact"`, `"created"`, `"title": "Proxy budget"`, `"file": ".agents/memory/`, `"score"`)
 	})
 }

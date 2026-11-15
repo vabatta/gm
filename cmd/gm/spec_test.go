@@ -83,21 +83,19 @@ func (r *repo) commit(msg string) {
 
 func (r *repo) head() string { r.t.Helper(); return r.git("rev-parse", "--short=12", "HEAD") }
 
-// notes lists the note files in .memory/notes and in the notes folder that
-// .gmconfig names.
+// notes lists the note files in .memory/notes and in the directory that
+// .gmconfig names, .agents/memory by default.
 func (r *repo) notes() []string {
 	files, _ := filepath.Glob(filepath.Join(r.dir, ".memory", "notes", "*.md"))
-	if dir := r.git("config", "--file", ".gmconfig", "--default", "", "gm.dir"); dir != "" {
-		more, _ := filepath.Glob(filepath.Join(r.dir, dir, "notes", "*.md"))
-		files = append(files, more...)
-	}
-	return files
+	dir := r.git("config", "--file", ".gmconfig", "--default", ".agents/memory", "gm.dir")
+	more, _ := filepath.Glob(filepath.Join(r.dir, dir, "*.md"))
+	return append(files, more...)
 }
 
 // note writes a note file by hand, for states that gm save never produces.
 func (r *repo) note(id, header, body string) {
 	r.t.Helper()
-	r.write(".memory/notes/"+id+"-hand.md", "---\nid: "+id+"\n"+header+"---\n"+body)
+	r.write(".agents/memory/"+id+"-hand.md", "---\nid: "+id+"\n"+header+"---\n"+body)
 }
 
 type result struct {

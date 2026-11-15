@@ -9,7 +9,7 @@ gm-note - format of a gm memory note file
 
 == SYNOPSIS
 
-_DIR_*/notes/*_ID_-_SLUG_.md*, where _DIR_ is *.memory* or the *gm.dir* of *.gmconfig* (see *gm*(1))
+_DIR_*/*_ID_-_SLUG_.md*, where _DIR_ is *.agents/memory* or the *gm.dir* of *.gmconfig* (see *gm*(1))
 
 == DESCRIPTION
 

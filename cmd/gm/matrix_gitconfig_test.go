@@ -425,7 +425,7 @@ func matrixFlows(t *testing.T, c *mcase) {
 		r := newMRepo(t, c)
 		id := r.fact("Fetch retries with backoff", "--at", "fetch.go", "--at", "fetch.go:3")
 		r.commit("note")
-		has(t, r.ok("search", "fetch", "retry"), id, "Fetch retries with backoff", ".memory/notes/"+id+"-")
+		has(t, r.ok("search", "fetch", "retry"), id, "Fetch retries with backoff", ".agents/memory/"+id+"-")
 		equal(t, ids(t, r.ok("search", "fetch", "retry", "--json")), []string{id})
 	})
 	t.Run("list and list --json print the live note", func(t *testing.T) {
@@ -495,7 +495,7 @@ func matrixFlows(t *testing.T, c *mcase) {
 		r.commit("old")
 		r.fact("Fetch retries five times", "--supersedes", old, "--at", "fetch.go:3")
 		r.commit("revision")
-		has(t, r.ok("prune"), "pruned .memory/notes/"+old+"-")
+		has(t, r.ok("prune"), "pruned .agents/memory/"+old+"-")
 		r.commit("prune")
 		h := r.head()
 		has(t, r.ok("show", old), "# pruned in "+h+"\n", "title: \"Fetch retries twice\"", "    3  func Fetch() {}\n")

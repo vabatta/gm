@@ -23,8 +23,8 @@ gm - keep project memory as note files in the repository, merged by git
 == DESCRIPTION
 
 *gm* keeps the memory of a project in the repository the memory is about.
-Each note is one markdown file in the *notes/* folder of the memory
-directory, *.memory/* unless *.gmconfig* names another (see *DIRECTORY*). You commit the notes with
+Each note is one markdown file in the notes directory, *.agents/memory/* unless
+*.gmconfig* names another (see *DIRECTORY*). You commit the notes with
 the work, so they travel with branches and worktrees. When branches merge,
 their notes merge with them. git is the only sync. There is no server and no
 index file.
@@ -207,11 +207,13 @@ merge alike. *show*, *lint* and *lint --review* all use the base.
 
 == DIRECTORY
 
-The memory directory holds the *notes/* folder. It is *.memory/* at the root
-of the worktree unless the file *.gmconfig* at the root names another one:
+The notes directory holds the note files and nothing else. It is
+*.agents/memory/* at the root of the worktree, such as
+*.agents/memory/*_ID_-_SLUG_.md*, unless the file *.gmconfig* at the root
+names another one:
 
   [gm]
-          dir = .agents/memory
+          dir = docs/memory
 
 *.gmconfig* uses the syntax of *git-config*(1), and *gm* reads it with *git
 config --file*. Commit it, so every clone, branch and worktree of the
@@ -220,20 +222,22 @@ configuration of a clone, because each clone has its own. _dir_ is a path
 relative to the root of the worktree that stays inside it; *gm* refuses to run
 when it is empty, absolute or leads out of the worktree.
 
-To move the notes, set _dir_ and move the files with *git mv*, such as:
+Earlier releases kept notes in *.memory/notes/*. When *.gmconfig* sets no
+_dir_, *.agents/memory/* does not exist and *.memory/notes/* does, *gm* keeps
+using *.memory/notes/*, so such a repository works as before. To move its notes
+to the default, run:
 
-  git config --file .gmconfig gm.dir .agents/memory
-  mkdir -p .agents && git mv .memory .agents/memory
+  mkdir -p .agents && git mv .memory/notes .agents/memory
 
-*gm* reads notes only from the memory directory. When _dir_ names another
-directory and *.memory/notes/* still holds *.md* files, for example from a
-branch that saved notes before the move, *lint* reports each such file as a
-problem, so no note is left behind unseen.
+*gm* reads notes only from the notes directory. When it is not
+*.memory/notes/* and *.memory/notes/* still holds *.md* files, for example
+from a branch that saved notes before the move, *lint* reports each such file
+as a problem, so no note is left behind unseen.
 
 Commands that read notes from git history read both *.memory/notes/* and the
-notes folder of the memory directory, so after a move from *.memory/* *show*
-still finds a note pruned before the move. A note pruned in a directory that
-_dir_ named before, and no longer names, is not read.
+notes directory, so after a move from *.memory/notes/* *show* still finds a
+note pruned before the move. A note pruned in a directory that _dir_ named
+before, and no longer names, is not read.
 
 == REVISIONS AND TOPICS
 
@@ -248,7 +252,7 @@ supersedes both.
 == PRUNING
 
 No command edits a note, so superseded notes pile up. *gm* reads every file in
-the notes folder for every command, so they also slow it down. *gm prune*
+the notes directory for every command, so they also slow it down. *gm prune*
 deletes them from the working tree, and git history keeps them.
 
 *prune* deletes the file of every note that another note supersedes. It keeps
@@ -288,9 +292,8 @@ title, then the path of the note file on the next line.
 
 *lint* prints one line per problem and exits 1 when it finds any. A problem is:
 
-* a *.md* file in the notes folder that is not a note;
-* a *.md* file in *.memory/notes/* when *.gmconfig* names another memory
-  directory;
+* a *.md* file in the notes directory that is not a note;
+* a *.md* file in *.memory/notes/* when the notes directory is another one;
 * an id used by more than one file;
 * a *supersedes* entry that names no note, neither on disk nor pruned in the
   history of HEAD;
@@ -388,11 +391,11 @@ release of *gm* reads every note format that an earlier release wrote.
 
 == FILES
 
-*.memory/notes/*_ID_-_SLUG_.md*::
-  One note, in the default memory directory. See *gm-note*(5).
+*.agents/memory/*_ID_-_SLUG_.md*::
+  One note, in the default notes directory. See *gm-note*(5).
 
 *.gmconfig*::
-  The memory directory, when it is not *.memory/*. See *DIRECTORY*.
+  The notes directory, when it is not *.agents/memory/*. See *DIRECTORY*.
 
 == NOTES
 

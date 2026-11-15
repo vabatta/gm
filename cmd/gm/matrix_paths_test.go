@@ -263,7 +263,7 @@ func TestMatrixPaths(t *testing.T) {
 		{"save with a whole-file --at writes the note", "save with a whole-file --at refuses", func(t *testing.T, c pathCase) {
 			r := c.setup(t)
 			out := r.ok("save", "fact", "--title", "Anchored note", "--keywords", "fetch retry backoff", "--fact", "f", "--evidence", "e", "--at", c.spec)
-			if len(r.notes()) != 1 || !strings.Contains(out, ".memory/notes/") {
+			if len(r.notes()) != 1 || !strings.Contains(out, ".agents/memory/") {
 				t.Fatalf("want one note and its path, got %q and %d files", out, len(r.notes()))
 			}
 		}},
@@ -392,11 +392,11 @@ func TestMatrixPaths(t *testing.T) {
 			r := c.setup(t)
 			old := c.save(r, "Anchored note", []string{c.spec})
 			c.save(r, "Anchored note revised", []string{c.spec}, "--supersedes", old)
-			has(t, r.ok("prune"), "kept .memory/notes/"+old+"-")
+			has(t, r.ok("prune"), "kept .agents/memory/"+old+"-")
 			r.commit("notes")
 			anchor := c.anchors(r, "HEAD~1")[0]
 			out := r.ok("prune")
-			has(t, out, "pruned .memory/notes/"+old+"-")
+			has(t, out, "pruned .agents/memory/"+old+"-")
 			if len(r.notes()) != 1 {
 				t.Fatalf("want the revision left, got %d files", len(r.notes()))
 			}

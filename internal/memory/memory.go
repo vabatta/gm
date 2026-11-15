@@ -1,6 +1,6 @@
 // Package memory reads and writes the notes of one repository, one file per
-// note in <root>/<dir>/notes, where dir is gm.dir in <root>/.gmconfig or
-// .memory.
+// note in <root>/<dir>, where dir is gm.dir in <root>/.gmconfig or
+// .agents/memory.
 //
 // gm never edits a note file. A revision is a new note that names the old one
 // in its supersedes list. A retirement is a note that supersedes notes with no
@@ -29,39 +29,62 @@ type Store struct {
 	notesPath string
 }
 
-// defaultNotes is the notes directory when .gmconfig names no memory
-// directory.
-const defaultNotes = ".memory/notes"
+// defaultNotes is the notes directory when .gmconfig names none. legacyNotes
+// is where earlier releases kept notes.
+const (
+	defaultNotes = ".agents/memory"
+	legacyNotes  = ".memory/notes"
+)
 
 // Open returns the Store of the worktree that contains dir, or git.ErrNoRepo.
-// The memory directory is gm.dir in the committed file .gmconfig, read with
-// git config so its syntax is git's, and .memory when that is not set. gm.dir
-// in the git configuration of a clone does not count, because each clone has
-// its own and the notes must be in one place for all of them.
+// The notes directory is gm.dir in the committed file .gmconfig, read with git
+// config so its syntax is git's. gm.dir in the git configuration of a clone
+// does not count, because each clone has its own and the notes must be in one
+// place for all of them. Without gm.dir it is .agents/memory, or legacyNotes
+// when only that exists, so a repository from an earlier release keeps
+// working.
 func Open(dir string) (*Store, error) {
 	r, err := git.Open(dir)
 	if err != nil {
 		return nil, err
 	}
-	d, err := r.Run("config", "--file", ".gmconfig", "--default", ".memory", "gm.dir")
-	if err != nil {
+	d, err := r.Run("config", "--file", ".gmconfig", "--default", "", "gm.dir")
+	switch {
+	case err != nil:
 		return nil, err
+	case d == "" && !isDir(r.Root, defaultNotes) && isDir(r.Root, legacyNotes):
+		return &Store{Git: r, notesPath: legacyNotes}, nil
+	case d == "" && !hasKey(r):
+		d = defaultNotes
 	}
 	d = filepath.Clean(d)
 	if !filepath.IsLocal(d) || d == "." {
 		return nil, fmt.Errorf("gm.dir in .gmconfig must be a directory inside the worktree, relative to its root, not %q", d)
 	}
-	return &Store{Git: r, notesPath: filepath.ToSlash(d) + "/notes"}, nil
+	return &Store{Git: r, notesPath: filepath.ToSlash(d)}, nil
+}
+
+// hasKey reports whether .gmconfig sets gm.dir at all, so an empty value is
+// refused rather than taken for the default.
+func hasKey(r *git.Repo) bool {
+	_, err := r.Run("config", "--file", ".gmconfig", "gm.dir")
+	return err == nil
+}
+
+// isDir reports whether rel, relative to root, is a directory.
+func isDir(root, rel string) bool {
+	fi, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel)))
+	return err == nil && fi.IsDir()
 }
 
 // historyPaths are the notes directories whose notes git history may hold:
-// the default one and the configured one. A move of the notes from .memory to
-// the configured directory thus keeps notes pruned before the move readable.
+// legacyNotes and the current one. A move of the notes from legacyNotes thus
+// keeps notes pruned before the move readable.
 func (s *Store) historyPaths() []string {
-	if s.notesPath == defaultNotes {
-		return []string{defaultNotes}
+	if s.notesPath == legacyNotes {
+		return []string{legacyNotes}
 	}
-	return []string{defaultNotes, s.notesPath}
+	return []string{legacyNotes, s.notesPath}
 }
 
 // NotesDir returns the directory that holds one markdown file per note.

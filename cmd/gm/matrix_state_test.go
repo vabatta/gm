@@ -336,7 +336,7 @@ func matrixGitState(t *testing.T) {
 							t.Fatalf("want %s deleted", now)
 						}
 					case "kept":
-						expect(t, res, want{exit: 0, has: []string{"kept " + now}, lacks: []string{"pruned .memory/notes/" + old}}, strings.NewReplacer())
+						expect(t, res, want{exit: 0, has: []string{"kept " + now}, lacks: []string{"pruned .agents/memory/" + old}}, strings.NewReplacer())
 						if !exists(r, now) {
 							t.Fatalf("want %s kept on disk", now)
 						}
@@ -356,18 +356,20 @@ func matrixGitState(t *testing.T) {
 				})
 			})
 		}
-		t.Run("in a submodule that holds .memory", func(t *testing.T) {
-			// setup makes .memory a submodule whose notes/ holds a note and a
-			// revision that supersedes it, committed in the submodule.
+		t.Run("in a submodule that holds .agents/memory", func(t *testing.T) {
+			// setup makes .agents/memory a submodule whose root holds a note
+			// and a revision that supersedes it, committed in the submodule.
 			setup := func(t *testing.T, modify bool) (r *repo, old, p string) {
 				sub := newRepo(t)
 				old = sub.fact("Fetch retries twice")
 				sub.fact("Fetch retries five times", "--supersedes", old)
 				sub.commit("notes")
-				sub.git("mv", ".memory/notes", "notes")
+				for _, f := range sub.notes() {
+					sub.git("mv", f, filepath.Base(f))
+				}
 				sub.commit("move notes to the root")
 				r = newRepo(t)
-				r.git("-c", "protocol.file.allow=always", "submodule", "add", "-q", "file://"+sub.dir, ".memory")
+				r.git("-c", "protocol.file.allow=always", "submodule", "add", "-q", "file://"+sub.dir, ".agents/memory")
 				r.git("commit", "-qm", "memory submodule")
 				p = fileOf(r, old)
 				if modify {
@@ -823,7 +825,7 @@ func matrixInput(t *testing.T) {
 		head := func(title string) string {
 			return "---\nid: " + id + "\ntype: fact\ntitle: \"" + title + "\"\nkeywords: proxy budget limit\ncreated: 2020-01-01T00:00:00Z\n"
 		}
-		file := ".memory/notes/" + id + "-hand.md"
+		file := ".agents/memory/" + id + "-hand.md"
 		type files map[string]string
 		absent := want{exit: 0, lacks: []string{id}}
 		found := want{exit: 0, has: []string{id}}
@@ -839,7 +841,7 @@ func matrixInput(t *testing.T) {
 				want{exit: 1, has: []string{file}}, absent, gone, absent},
 			{"header without id", files{file: strings.Replace(head("Proxy bad"), "id: "+id+"\n", "", 1) + "---\n" + sound},
 				want{exit: 1, has: []string{file}}, want{exit: 0, lacks: []string{"Proxy bad"}}, gone, want{exit: 0, lacks: []string{"Proxy bad"}}},
-			{"duplicate ids", files{file: head("Proxy one") + "---\n" + sound, ".memory/notes/" + id + "-copy.md": head("Proxy two") + "---\n" + sound},
+			{"duplicate ids", files{file: head("Proxy one") + "---\n" + sound, ".agents/memory/" + id + "-copy.md": head("Proxy two") + "---\n" + sound},
 				want{exit: 1, has: []string{"id " + id + " is used by 2 notes"}}, want{exit: silent}, want{exit: silent}, want{exit: silent}},
 			{"CRLF line ends", files{file: strings.ReplaceAll(head("Proxy crlf")+"---\n"+sound, "\n", "\r\n")},
 				cleanLint, found, want{exit: 0, has: []string{"Proxy crlf"}}, found},
@@ -847,7 +849,7 @@ func matrixInput(t *testing.T) {
 				want{exit: 1, has: []string{file, "note format 2 needs a newer gm"}}, absent, gone, absent},
 			{"unknown keys", files{file: head("Proxy keys") + "color: blue\nowner: x\n---\n" + sound},
 				cleanLint, found, want{exit: 0, has: []string{"Proxy keys"}}, found},
-			{"a non-.md file", files{".memory/notes/" + id + "-hand.txt": head("Proxy text") + "---\n" + sound},
+			{"a non-.md file", files{".agents/memory/" + id + "-hand.txt": head("Proxy text") + "---\n" + sound},
 				cleanLint, absent, gone, absent},
 			{"an empty file", files{file: ""},
 				want{exit: 1, has: []string{file}}, absent, gone, absent},

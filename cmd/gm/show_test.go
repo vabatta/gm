@@ -33,6 +33,28 @@ func TestShow(t *testing.T) {
 		r.note("20200101T000000Z-aaaaaa", "type: fact\ntitle: \"Gone\"\nkeywords: a b c\nat: [deadbeefdead:gone.go]\ncreated: 2020-01-01T00:00:00Z\n", "## Fact\nf\n\n## Evidence\ne\n")
 		has(t, r.ok("show", "20200101T000000Z-aaaaaa"), "\n# deadbeefdead:gone.go: ")
 	})
+	t.Run("prints the reason when the file at the base has fewer lines than the anchor", func(t *testing.T) {
+		r := newRepo(t)
+		r.note("20200101T000000Z-aaaaaa", "type: fact\ntitle: \"Short\"\nkeywords: a b c\nat: ["+r.head()+":fetch.go:8-9]\ncreated: 2020-01-01T00:00:00Z\n", "## Fact\nf\n\n## Evidence\ne\n")
+		has(t, r.ok("show", "20200101T000000Z-aaaaaa"), "\n# "+r.head()+":fetch.go:8-9: ", "3 lines")
+	})
+	t.Run("names HEAD as the base, and why, for a note not committed yet whose anchor commit is gone", func(t *testing.T) {
+		r := newRepo(t)
+		id := r.fact("Fetch", "--at", "fetch.go:3")
+		r.git("commit", "-q", "--amend", "-m", "code, reworded")
+		has(t, r.ok("show", id), "(read at HEAD, because the note is not committed yet)\n", "    3  func Fetch() {}")
+		has(t, r.ok("show", id, "--json"), `"read_at": "HEAD"`)
+	})
+	t.Run("names HEAD as the base, and why, in a shallow clone that lacks the anchor's commit", func(t *testing.T) {
+		r := newRepo(t)
+		id := r.fact("Fetch", "--at", "fetch.go:3")
+		r.commit("note")
+		r.write("other.go", "package x\n")
+		r.commit("more")
+		clone := &repo{t, t.TempDir()}
+		clone.git("clone", "-q", "--depth", "1", "file://"+r.dir, ".")
+		has(t, clone.ok("show", id), "(read at HEAD, because this shallow clone lacks commit ")
+	})
 	t.Run("exits 2 for an unknown id", func(t *testing.T) {
 		refused(t, newRepo(t).gm("show", "20200101T000000Z-000000"), "no note")
 	})

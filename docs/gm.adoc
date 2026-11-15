@@ -79,9 +79,10 @@ error, because it usually means an unquoted flag value.
 *show* _ID_::
   Print the note file, then the code of each anchor, read at the anchor's
   base commit. See *ANCHORS*. When the base is not the anchor's own commit,
-  the heading of the anchor names it. A line-range anchor shows its lines,
-  numbered. A whole-file anchor shows the first 40 lines. An anchor whose code
-  git cannot read shows the reason instead. For a pruned note, *show* reads
+  the heading of the anchor names the base and why. A line-range anchor shows
+  its lines, numbered. A whole-file anchor shows the first 40 lines. An anchor
+  whose code git cannot read, or whose lines are past the end of the file at
+  the base, shows the reason instead. For a pruned note, *show* reads
   the file from git history and prints a first line that names the commit
   that pruned it. See *PRUNING*.
 
@@ -175,6 +176,7 @@ __COMMIT__:__PATH__[:__FROM__[-__TO__]].
 *save* refuses an anchor when:
 
 * the path is empty;
+* the path names a directory, not a file;
 * the file is not committed at HEAD;
 * the file has uncommitted changes, because the anchor must show the code that
   the note describes. Commit the code first, then save the note;

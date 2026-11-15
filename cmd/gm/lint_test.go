@@ -50,6 +50,16 @@ func TestLint(t *testing.T) {
 		r.note("20200101T000000Z-bbbbbb", "type: fact\ntitle: \"T\"\ncreated: 2020-01-01T00:00:00Z\ntopic: a b\nmigrated: engram obs-2 (discovery)\n", "free text\n")
 		fails(t, lint(r), "topic one word")
 	})
+	t.Run("reports an anchor whose file is gone when the path holds a space", func(t *testing.T) {
+		r := newRepo(t)
+		r.write("my file.go", "package x\n")
+		r.commit("spaced")
+		r.fact("Spaced", "--at", "my file.go")
+		r.commit("note")
+		r.git("rm", "-q", "my file.go")
+		r.commit("remove")
+		fails(t, lint(r), "my file.go: the file no longer exists at HEAD")
+	})
 	t.Run("reports an anchor whose file is gone, and names the new path after a rename", func(t *testing.T) {
 		r := newRepo(t)
 		r.fact("Fetch lives here", "--at", "fetch.go")

@@ -21,6 +21,12 @@ func TestAnchors(t *testing.T) {
 		r.write("new.go", "package x\n")
 		refused(t, r.gm("save", "fact", "--title", "t", "--keywords", "a b c", "--fact", "f", "--evidence", "e", "--at", "new.go"), "not committed at HEAD")
 	})
+	t.Run("refuses a path that names a directory", func(t *testing.T) {
+		r := newRepo(t)
+		r.write("dir/a.go", "package dir\n")
+		r.commit("dir")
+		refused(t, r.gm("save", "fact", "--title", "t", "--keywords", "a b c", "--fact", "f", "--evidence", "e", "--at", "dir"), "names a directory")
+	})
 	t.Run("refuses an empty path", func(t *testing.T) {
 		refused(t, newRepo(t).gm("save", "fact", "--title", "t", "--keywords", "a b c", "--fact", "f", "--evidence", "e", "--at", ""), "needs a path")
 	})

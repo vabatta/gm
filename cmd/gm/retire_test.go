@@ -14,6 +14,13 @@ func TestRetire(t *testing.T) {
 		lacks(t, r.ok("list"), a, b)
 		r.ok("lint")
 	})
+	t.Run("counts an id given twice once", func(t *testing.T) {
+		r := newRepo(t)
+		a := r.fact("Fetch retries twice")
+		out := r.ok("retire", a, a, "--why", "Fetch no longer retries")
+		content := r.read(strings.Fields(out)[1])
+		has(t, content, "supersedes: ["+a+"]", `title: "Retired: Fetch retries twice"`)
+	})
 	t.Run("requires --why", func(t *testing.T) {
 		r := newRepo(t)
 		refused(t, r.gm("retire", r.fact("Fetch retries twice")), "--why")

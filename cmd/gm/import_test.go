@@ -49,6 +49,32 @@ func TestImport(t *testing.T) {
 		content := r.read(strings.TrimPrefix(r.notes()[0], r.dir+"/"))
 		has(t, content, "...\"\n", "---\n"+long+"\n\nbody\n")
 	})
+	t.Run("writes nothing when two observations share an id", func(t *testing.T) {
+		r := newRepo(t)
+		refused(t, r.gm("import", "engram", export(r, obs("obs-1", "decision", "A", "a")+","+obs("obs-1", "decision", "B", "b"), "")), "obs-1")
+		if len(r.notes()) != 0 {
+			t.Fatal("want nothing written")
+		}
+	})
+	t.Run("writes nothing when an observation has no title", func(t *testing.T) {
+		r := newRepo(t)
+		refused(t, r.gm("import", "engram", export(r, obs("obs-1", "decision", "A", "a")+","+obs("obs-2", "decision", " ", "b"), "")), "obs-2")
+		if len(r.notes()) != 0 {
+			t.Fatal("want nothing written")
+		}
+	})
+	t.Run("keeps the migrated header on one line", func(t *testing.T) {
+		r := newRepo(t)
+		r.ok("import", "engram", export(r, obs("o2\ntype: retirement", "decision", "T", "b"), ""))
+		content := r.read(strings.TrimPrefix(r.notes()[0], r.dir+"/"))
+		has(t, content, "migrated: engram o2 type: retirement (decision)\n", "type: decision\n")
+		lacks(t, content, "\ntype: retirement")
+	})
+	t.Run("moves a title on several lines into the body and keeps its first line", func(t *testing.T) {
+		r := newRepo(t)
+		r.ok("import", "engram", export(r, obs("obs-1", "decision", "First line\nsecond line", "body"), ""))
+		has(t, r.read(strings.TrimPrefix(r.notes()[0], r.dir+"/")), `title: "First line"`, "---\nFirst line\nsecond line\n\nbody\n")
+	})
 	t.Run("turns spaces in a topic into hyphens", func(t *testing.T) {
 		r := newRepo(t)
 		b, _ := json.Marshal(map[string]string{"sync_id": "obs-1", "type": "decision", "title": "T", "content": "c", "topic_key": "decision/cache store", "created_at": "2026-11-13 10:00:00"})

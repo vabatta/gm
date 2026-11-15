@@ -27,6 +27,18 @@ func TestAnchors(t *testing.T) {
 		r.commit("dir")
 		refused(t, r.gm("save", "fact", "--title", "t", "--keywords", "a b c", "--fact", "f", "--evidence", "e", "--at", "dir"), "names a directory")
 	})
+	t.Run("refuses a path that holds a line break", func(t *testing.T) {
+		r := newRepo(t)
+		r.write("a\nb.go", "package x\n")
+		r.commit("odd")
+		refused(t, r.gm("save", "fact", "--title", "t", "--keywords", "a b c", "--fact", "f", "--evidence", "e", "--at", "a\nb.go"), "line break")
+	})
+	t.Run("counts blank lines at the end of the file", func(t *testing.T) {
+		r := newRepo(t)
+		r.write("t.txt", "a\nb\n\n\n")
+		r.commit("blank lines")
+		r.fact("Blank", "--at", "t.txt:1-4")
+	})
 	t.Run("refuses an empty path", func(t *testing.T) {
 		refused(t, newRepo(t).gm("save", "fact", "--title", "t", "--keywords", "a b c", "--fact", "f", "--evidence", "e", "--at", ""), "needs a path")
 	})

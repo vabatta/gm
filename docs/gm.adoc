@@ -70,7 +70,8 @@ error, because it usually means an unquoted flag value.
 
 *retire* _ID_...::
   Write a retirement, a note that supersedes the notes _ID_... and has no
-  successor, and print its id and path. *retire* needs *--why*.
+  successor, and print its id and path. *retire* needs *--why*. An id given
+  twice counts once.
 
 *search* _WORDS_...::
   Print the live notes that contain any of _WORDS_, best match first. See
@@ -137,10 +138,10 @@ error, because it usually means an unquoted flag value.
   For *search*, only notes of this type.
 
 *--all*::
-  For *search* and *list*, include superseded notes. *gm* reads the notes
-  pruned from the working tree from git history. *search* marks each
-  superseded note *(superseded)*, and adds the commit that pruned it for a
-  pruned note.
+  For *search* and *list*, include superseded notes and the notes deleted
+  from the working tree, which *gm* reads from git history. *search* marks a
+  superseded note *(superseded)*, and a note read from git history *(pruned
+  in* _COMMIT_*)*.
 
 *--by* *type*|*time*::
   For *list*, group by type, which is the default, or print the newest first
@@ -175,7 +176,7 @@ __COMMIT__:__PATH__[:__FROM__[-__TO__]].
 
 *save* refuses an anchor when:
 
-* the path is empty;
+* the path is empty or holds a line break;
 * the path names a directory, not a file;
 * the file is not committed at HEAD;
 * the file has uncommitted changes, because the anchor must show the code that
@@ -223,8 +224,8 @@ superseded note. Commit the deletions on a branch like any other change.
 A pruned note stays readable. *show* _ID_ reads it from git history, as the
 file was when a commit deleted it. *search --all* and *list --all* include
 it. *lint*, *save --supersedes* and *retire* accept the id of a pruned note. A
-commit that deletes a note and adds a similar one still counts as the commit
-that pruned the note.
+commit that deletes a note and adds a similar one, and a merge commit that
+deletes a note, still count as the commit that pruned the note.
 
 Branches merge as before. When one branch deletes a note file and the other
 leaves it unchanged, the merge deletes it. A shallow clone lacks the history that holds
@@ -259,7 +260,8 @@ title, then the path of the note file on the next line.
   whose lines changed after the base. The note describes code that no longer
   exists, and a squash merge would hide that, so save a revision before
   merging. The default branch is the first that exists of *origin/HEAD*,
-  *main*, *master*, *origin/main* and *origin/master*. When none exists,
+  *origin/main*, *origin/master*, *main* and *master*. A remote branch comes
+  first, because a local branch may be behind it. When none exists,
   *lint* skips this check and prints a *warning:* line that says so. A
   whole-file anchor is about the file, which may change while the
   note still holds, so its changes are review lines instead;
@@ -285,7 +287,10 @@ the same way for every source:
   lines, and opens the body with the full title;
 * spaces in a topic become hyphens;
 * the *migrated* header records the source, the memory's id there and its type
-  there, and exempts the note from the section templates.
+  there, on one line, and exempts the note from the section templates.
+
+*import* writes nothing when two memories in _FILE_ share an id, or when a
+memory has no title.
 
 An unknown _SOURCE_ is an error that lists the sources gm reads.
 

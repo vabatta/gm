@@ -74,6 +74,31 @@ func TestSearch(t *testing.T) {
 		r.fact("Fetch")
 		refused(t, r.gm("search", "fetch", "-n", "-1"), "-n")
 	})
+	t.Run("--all marks a note deleted without a successor as pruned, not superseded", func(t *testing.T) {
+		r := newRepo(t)
+		r.fact("Fetch retries twice")
+		r.commit("note")
+		r.git("rm", "-q", strings.TrimPrefix(r.notes()[0], r.dir+"/"))
+		r.commit("delete")
+		out := r.ok("search", "fetch", "--all")
+		has(t, out, "(pruned in "+r.head()+")")
+		lacks(t, out, "superseded")
+	})
+	t.Run("--json marks a superseded result", func(t *testing.T) {
+		r := newRepo(t)
+		old := r.fact("Fetch retries twice")
+		r.fact("Fetch retries five times", "--supersedes", old)
+		has(t, r.ok("search", "fetch", "--all", "--json"), `"superseded": true`)
+	})
+	t.Run("takes flags and query words in any order", func(t *testing.T) {
+		r := newRepo(t)
+		r.fact("Fetch retries twice")
+		r.fact("Fetch retries five times")
+		equal(t, ids(t, r.ok("search", "fetch", "-n", "1", "--json", "retries")), ids(t, r.ok("search", "--json", "-n", "1", "fetch", "retries")))
+		if n := len(ids(t, r.ok("search", "fetch", "-n", "1", "--json", "retries"))); n != 1 {
+			t.Fatalf("want 1 result, got %d", n)
+		}
+	})
 	t.Run("prints the id, type, date and title, then the file path", func(t *testing.T) {
 		r := newRepo(t)
 		out := r.ok("save", "fact", "--title", "Proxy budget", "--keywords", "a b c", "--fact", "f", "--evidence", "e")

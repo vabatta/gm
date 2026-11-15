@@ -1,6 +1,7 @@
 package main
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -20,6 +21,16 @@ func TestCommands(t *testing.T) {
 		if res.code != 0 || strings.TrimSpace(res.stdout) == "" {
 			t.Fatalf("want a version, got %s", res)
 		}
+	})
+	t.Run("takes anchor paths from the worktree root when run in a subdirectory", func(t *testing.T) {
+		r := newRepo(t)
+		r.write("sub/a.go", "package sub\n")
+		r.commit("sub")
+		res := gmIn(t, filepath.Join(r.dir, "sub"), "save", "fact", "--title", "Sub", "--keywords", "a b c", "--fact", "f", "--evidence", "e", "--at", "sub/a.go")
+		if res.code != 0 {
+			t.Fatalf("want exit 0, got %s", res)
+		}
+		has(t, r.read(strings.TrimPrefix(r.notes()[0], r.dir+"/")), ":sub/a.go]")
 	})
 	t.Run("an unknown command exits 2", func(t *testing.T) {
 		refused(t, newRepo(t).gm("frobnicate"), "frobnicate")

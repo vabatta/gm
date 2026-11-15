@@ -100,6 +100,38 @@ func TestPruning(t *testing.T) {
 			t.Fatalf("want a clean lint, got %q", out)
 		}
 	})
+	t.Run("reads a note pruned in a merge commit", func(t *testing.T) {
+		r := newRepo(t)
+		old := r.fact("Fetch retries twice")
+		r.commit("note")
+		r.git("checkout", "-qb", "feat")
+		r.write("x.go", "package x\n")
+		r.commit("feat")
+		r.git("checkout", "-q", "main")
+		r.write("y.go", "package x\n")
+		r.commit("main")
+		r.git("merge", "-q", "--no-ff", "--no-commit", "feat")
+		r.fact("Fetch retries five times", "--supersedes", old)
+		r.ok("prune")
+		r.commit("merge feat, revise and prune")
+		has(t, r.ok("show", old), "# pruned in "+r.head()+"\n")
+		if out := r.ok("lint"); out != "" {
+			t.Fatalf("want a clean lint, got %q", out)
+		}
+	})
+	t.Run("keeps a superseded note with uncommitted changes whose file name git quotes", func(t *testing.T) {
+		r := newRepo(t)
+		old := r.fact("Fetch retries twice")
+		odd := ".memory/notes/" + old + "-old öne.md"
+		r.git("mv", strings.TrimPrefix(r.notes()[0], r.dir+"/"), odd)
+		r.commit("rename")
+		r.write(odd, r.read(odd)+"\nedited\n")
+		r.fact("Fetch retries five times", "--supersedes", old)
+		has(t, r.ok("prune"), "kept "+odd)
+		if _, err := os.Stat(filepath.Join(r.dir, odd)); err != nil {
+			t.Fatal(err)
+		}
+	})
 	t.Run("save --supersedes and retire accept the id of a pruned note", func(t *testing.T) {
 		r, old, revision, _ := pruned(t)
 		r.ok("prune")

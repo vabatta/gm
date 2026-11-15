@@ -31,6 +31,15 @@ func TestNoteFormat(t *testing.T) {
 		}
 		has(t, res.stdout, "20200101T000000Z-aaaaaa", "note format 2 needs a newer gm")
 	})
+	t.Run("writes a list as a JSON array when an item holds a bracket, a quote, or a trailing space", func(t *testing.T) {
+		for _, name := range []string{"a[1].go", `q"x.go`, "trail.go "} {
+			r := newRepo(t)
+			r.write(name, "x\n")
+			r.commit("odd")
+			r.fact("Odd", "--at", name)
+			has(t, r.read(strings.TrimPrefix(r.notes()[0], r.dir+"/")), "at: [\"")
+		}
+	})
 	t.Run("names the file after the id and the title in lowercase, cut to 48 characters", func(t *testing.T) {
 		r := newRepo(t)
 		id := r.fact("Fetch Retries With Exponential Backoff And Jitter On Every Call")

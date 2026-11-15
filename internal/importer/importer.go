@@ -3,7 +3,7 @@
 // It is the port of a ports-and-adapters design. A Source is the port: an
 // adapter reads one tool's export format into Records, and nothing else. The
 // rules that make a Record a note are written once, in Import, so every
-// source gets the same ids, links, title rules and secret check. Adapters live
+// source gets the same ids, links and title rules. Adapters live
 // in subpackages, and the command wires them in; this package imports none.
 package importer
 
@@ -36,13 +36,8 @@ type Source interface {
 }
 
 // Result is what Import wrote. Notes counts the note files and Links the
-// supersedes links kept. Refused lists the records that were not written
-// because their text looks like a secret, as id and kind of secret, never as
-// text.
-type Result struct {
-	Notes, Links int
-	Refused      []string
-}
+// supersedes links kept.
+type Result struct{ Notes, Links int }
 
 // Import reads file with src and writes one note per record. Each note gets a
 // new id from note.NewID at the record's creation time, because ids derived
@@ -51,21 +46,16 @@ type Result struct {
 // is cut, and the full title becomes the first paragraph of the body. The
 // migrated header records the source, the record's id and its kind, and
 // exempts the note from the section templates, which other tools' text does
-// not follow. A record whose text looks like a secret is not written, so no
-// credential reaches the repository.
+// not follow.
 func Import(st *memory.Store, src Source, file string) (Result, error) {
 	recs, err := src.Read(file)
 	if err != nil {
 		return Result{}, err
 	}
 	var res Result
-	ids := map[string]string{} // source id -> new note id, only for records that will be written
+	ids := map[string]string{} // source id -> new note id
 	created := map[string]time.Time{}
 	for _, r := range recs {
-		if kind, bad := note.Secret(r.Title + "\n" + r.Body); bad {
-			res.Refused = append(res.Refused, r.ID+" ("+kind+")")
-			continue
-		}
 		t := r.Created
 		if t.IsZero() {
 			t = time.Now()
@@ -73,9 +63,6 @@ func Import(st *memory.Store, src Source, file string) (Result, error) {
 		created[r.ID], ids[r.ID] = t, note.NewID(t)
 	}
 	for _, r := range recs {
-		if ids[r.ID] == "" {
-			continue
-		}
 		var sup []string
 		for _, old := range r.Supersedes {
 			if ids[old] != "" {

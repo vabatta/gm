@@ -50,27 +50,6 @@ func TestSave(t *testing.T) {
 	t.Run("refuses an empty section and names its flag", func(t *testing.T) {
 		refused(t, newRepo(t).gm("save", "lesson", "--title", "t", "--keywords", "a b c", "--happened", "h", "--cause", "c"), "section Rule now is empty (flag --rule)")
 	})
-	t.Run("refuses text that looks like a credential and names the kind, never the text", func(t *testing.T) {
-		for kind, secret := range map[string]string{
-			"private key":           "-----BEGIN OPENSSH PRIVATE KEY-----",
-			"AWS access key":        "AKIAABCDEFGHIJKLMNOP",
-			"GitHub token":          "ghp_0123456789abcdefghij0123456789abcdef",
-			"API key":               "sk-ant-0123456789abcdefghijklmn",
-			"JWT":                   "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NSJ9.c2lnbmF0dXJlMTIz",
-			"password in a URL":     "postgres://app:hunter22@db:5432/x",
-			"credential assignment": "API_KEY=a1b2c3d4e5f6g7h8",
-		} {
-			res := newRepo(t).gm("save", "fact", "--title", "t", "--keywords", "a b c", "--fact", "uses "+secret, "--evidence", "e")
-			refused(t, res, kind)
-			lacks(t, res.stdout+res.stderr, secret)
-		}
-	})
-	t.Run("accepts placeholders and prose about credentials", func(t *testing.T) {
-		r := newRepo(t)
-		for _, text := range []string{"postgres://app:$PASSWORD@db/x", "the token refresh path retries on 401", "set OPENAI_API_KEY in .env"} {
-			r.fact("Placeholder "+text, "--evidence", text)
-		}
-	})
 	t.Run("refuses a supersedes id that names no note", func(t *testing.T) {
 		refused(t, newRepo(t).gm("save", "fact", "--title", "t", "--keywords", "a b c", "--fact", "f", "--evidence", "e",
 			"--supersedes", "20200101T000000Z-000000"), "supersedes unknown note 20200101T000000Z-000000")

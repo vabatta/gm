@@ -159,10 +159,6 @@ every broken rule at once, write nothing, and exit 2.
 * The keywords are one line of at least 3 words. The topic has no spaces.
 * No section is empty, and no section is over 800 characters.
 * No line of section text starts with *+##+*.
-* No text looks like a credential, such as a private key, an access token, an
-  API key, a JWT, a password in a URL, or a secret-like name assigned a value
-  that mixes letters and digits. The message names the kind of secret, never
-  the text. Placeholders such as *$PASSWORD* pass.
 * Every *--supersedes* id names an existing note.
 * Every *--at* anchor can be pinned. See *ANCHORS*.
 
@@ -250,7 +246,7 @@ then the path of the note file on the next line.
 * a *supersedes* entry that names no note, neither on disk nor pruned in the
   history of HEAD;
 * a live note that breaks a rule for a new note (migrated notes are checked
-  only for title, keywords, topic and secrets);
+  only for title, keywords and topic);
 * an anchor of a live note whose file is gone at HEAD; when git sees the file
   as renamed since the base, the problem names the new path;
 * a line-range anchor of a live note that is not yet on the default branch,
@@ -281,9 +277,7 @@ the same way for every source:
   the full title opens the body;
 * spaces in a topic become hyphens;
 * the *migrated* header records the source, the memory's id there and its type
-  there, and exempts the note from the section templates;
-* a memory whose text looks like a credential is not imported. *import* prints
-  its id and the kind of secret, never the text.
+  there, and exempts the note from the section templates.
 
 An unknown _SOURCE_ is an error that lists the sources gm reads.
 

@@ -43,12 +43,12 @@ func TestLint(t *testing.T) {
 		r.note("20200101T000000Z-aaaaaa", "type: fact\ntitle: \"T\"\nkeywords: a b\ncreated: 2020-01-01T00:00:00Z\n", "## Fact\nf\n")
 		fails(t, lint(r), "at least 3 words", "section Evidence is empty")
 	})
-	t.Run("checks a migrated note only for title, keywords, topic and secrets", func(t *testing.T) {
+	t.Run("checks a migrated note only for title, keywords and topic", func(t *testing.T) {
 		r := newRepo(t)
 		r.note("20200101T000000Z-aaaaaa", "type: fact\ntitle: \"T\"\ncreated: 2020-01-01T00:00:00Z\nmigrated: engram obs-1 (discovery)\n", "free text\n")
 		r.ok("lint")
-		r.note("20200101T000000Z-bbbbbb", "type: fact\ntitle: \"T\"\ncreated: 2020-01-01T00:00:00Z\nmigrated: engram obs-2 (discovery)\n", "AKIAABCDEFGHIJKLMNOP\n")
-		fails(t, lint(r), "AWS access key")
+		r.note("20200101T000000Z-bbbbbb", "type: fact\ntitle: \"T\"\ncreated: 2020-01-01T00:00:00Z\ntopic: a b\nmigrated: engram obs-2 (discovery)\n", "free text\n")
+		fails(t, lint(r), "topic one word")
 	})
 	t.Run("reports an anchor whose file is gone, and names the new path after a rename", func(t *testing.T) {
 		r := newRepo(t)

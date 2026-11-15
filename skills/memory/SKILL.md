@@ -28,7 +28,7 @@ A note is never edited. To change one, save a new note with `--supersedes ID`. T
 
 ## Check before you hand over
 
-Run `gm lint` after merging another branch and before opening a pull request. It fails on parallel revisions of one topic, anchors whose file is gone, notes on the branch whose anchored code changed after them, broken supersedes, duplicate ids, empty template sections, and text that looks like a secret. Fix each by saving a note: one that supersedes the parallel revisions, or a revision anchored to the code as it is now. Run `gm lint --review` to list notes whose anchored lines changed since, and re-read those. Done when `gm lint` exits 0.
+Run `gm lint` after merging another branch and before opening a pull request. It fails on parallel revisions of one topic, anchors whose file is gone, notes on the branch whose anchored code changed after them, broken supersedes, duplicate ids and empty template sections. Fix each by saving a note: one that supersedes the parallel revisions, or a revision anchored to the code as it is now. Run `gm lint --review` to list notes whose anchored lines changed since, and re-read those. Done when `gm lint` exits 0.
 
 ## Never
 

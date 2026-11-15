@@ -49,15 +49,6 @@ func TestImport(t *testing.T) {
 		content := r.read(strings.TrimPrefix(r.notes()[0], r.dir+"/"))
 		has(t, content, "...\"\n", "---\n"+long+"\n\nbody\n")
 	})
-	t.Run("skips an observation that looks like a credential and prints its id and kind, never the text", func(t *testing.T) {
-		r := newRepo(t)
-		out := r.ok("import", "engram", export(r, obs("obs-1", "decision", "Leaky", "AKIAABCDEFGHIJKLMNOP")+","+obs("obs-2", "decision", "Fine", "f"), ""))
-		has(t, out, "imported 1 notes", "obs-1 (AWS access key)")
-		lacks(t, out, "AKIAABCDEFGHIJKLMNOP")
-		if len(r.notes()) != 1 {
-			t.Fatal("want only the clean observation written")
-		}
-	})
 	t.Run("turns spaces in a topic into hyphens", func(t *testing.T) {
 		r := newRepo(t)
 		b, _ := json.Marshal(map[string]string{"sync_id": "obs-1", "type": "decision", "title": "T", "content": "c", "topic_key": "decision/cache store", "created_at": "2026-11-13 10:00:00"})

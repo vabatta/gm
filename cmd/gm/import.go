@@ -19,8 +19,7 @@ var sources = map[string]importer.Source{
 	"engram": engram.Source{},
 }
 
-// importFrom runs gm import SOURCE FILE and prints what it wrote and which
-// records it skipped as secrets.
+// importFrom runs gm import SOURCE FILE and prints what it wrote.
 func importFrom(st *memory.Store, args []string, w io.Writer) error {
 	names := slices.Sorted(maps.Keys(sources))
 	if len(args) != 2 {
@@ -35,8 +34,5 @@ func importFrom(st *memory.Store, args []string, w io.Writer) error {
 		return err
 	}
 	fmt.Fprintf(w, "imported %d notes with %d supersedes links; other relations dropped\n", res.Notes, res.Links)
-	for _, r := range res.Refused {
-		fmt.Fprintln(w, "not imported, looks like a secret:", r)
-	}
 	return nil
 }

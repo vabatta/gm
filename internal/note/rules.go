@@ -8,7 +8,7 @@ import (
 
 // Problems returns every rule the note breaks, so gm save can refuse a note
 // with all of its problems at once. Every note is checked for its title, the
-// form of its keywords and topic, and secrets. The checks stop there for a
+// form of its keywords and topic. The checks stop there for a
 // migrated note, because its body was written before the templates existed.
 // Other notes are also checked for their type, keyword count, retirement
 // target and sections.
@@ -19,9 +19,6 @@ func (n Note) Problems() []string {
 	}
 	if strings.ContainsAny(n.Keywords, "\r\n") || strings.ContainsAny(n.Topic, " \t\r\n") {
 		p = append(p, "keywords must be one line and topic one word, like decision/cache-store")
-	}
-	if kind, ok := Secret(n.Title + "\n" + n.Keywords + "\n" + n.Body); ok {
-		p = append(p, "text looks like it holds a secret ("+kind+"); remove it")
 	}
 	if n.Migrated != "" {
 		return p

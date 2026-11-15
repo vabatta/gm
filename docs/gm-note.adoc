@@ -42,6 +42,11 @@ A reader ignores keys it does not know.
 *created*:: The creation time in RFC 3339, UTC.
 *migrated*:: Optional. Where an imported note came from, for example
   *engram obs-1a2b (decision)*.
+*format*:: Optional. The version of this file format. A note without it is
+  format 1, which this page describes, and *gm* writes format 1 without the
+  key. A reader refuses a format it does not know instead of misreading the
+  note: search, show and list leave the note out, and *gm lint* fails with
+  _FILE_*: note format* _N_ *needs a newer gm*.
 
 A list is written as *[a, b]*. When an item holds a comma, a bracket, a quote, or
 a leading or trailing space, the whole list is written as a JSON array instead.

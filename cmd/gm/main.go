@@ -85,12 +85,12 @@ func run(args []string, dir string, stdout, stderr io.Writer) int {
 // commands maps each command name to the function that runs it. context is
 // not here, because run handles it before opening the store.
 var commands = map[string]func(st *memory.Store, args []string, w io.Writer) error{
-	"save":          save,
-	"retire":        retire,
-	"search":        find,
-	"show":          show,
-	"lint":          lint,
-	"list":          list,
-	"prune":         prune,
-	"import-engram": importEngram,
+	"save":   save,
+	"retire": retire,
+	"search": find,
+	"show":   show,
+	"lint":   lint,
+	"list":   list,
+	"prune":  prune,
+	"import": importFrom,
 }

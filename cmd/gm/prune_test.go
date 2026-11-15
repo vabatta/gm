@@ -122,6 +122,7 @@ func TestPruning(t *testing.T) {
 	t.Run("keeps a superseded note with uncommitted changes whose file name git quotes", func(t *testing.T) {
 		r := newRepo(t)
 		old := r.fact("Fetch retries twice")
+		r.commit("note")
 		odd := ".memory/notes/" + old + "-old öne.md"
 		r.git("mv", strings.TrimPrefix(r.notes()[0], r.dir+"/"), odd)
 		r.commit("rename")

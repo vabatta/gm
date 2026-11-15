@@ -22,14 +22,22 @@ const notesPath = ".memory/notes"
 func (s *Store) Prune() (pruned, kept []string, err error) {
 	ns, _ := s.Load()
 	dead := Dead(ns)
-	status, err := s.Git.Run("status", "--porcelain", "--untracked-files=all", "--ignored", "--", notesPath)
+	// -z prints each path as it is: without it, git quotes a path with
+	// unusual characters and the lookup by note file misses it. A rename or
+	// copy entry is followed by its original path, which is dirty too.
+	status, err := s.Git.Run("status", "--porcelain", "-z", "--untracked-files=all", "--ignored", "--", notesPath)
 	if err != nil {
 		return nil, nil, err
 	}
 	dirty := map[string]bool{}
-	for line := range strings.SplitSeq(status, "\n") {
-		if len(line) > 3 {
-			dirty[line[3:]] = true
+	entries := strings.Split(status, "\x00")
+	for i := 0; i < len(entries); i++ {
+		if e := entries[i]; len(e) > 3 {
+			dirty[e[3:]] = true
+			if e[0] == 'R' || e[0] == 'C' {
+				i++
+				dirty[entries[min(i, len(entries)-1)]] = true
+			}
 		}
 	}
 	for _, n := range ns {
@@ -56,10 +64,11 @@ type prunedFile struct{ commit, path, blob string }
 // of each deleted file, so Pruned can read the note by blob id without walking
 // the tree of the commit before. --no-renames keeps git from pairing a deleted
 // note with a similar note added in the same commit, which would hide the
-// deletion. In a shallow clone it lists only the deletions in the history the
+// deletion. --diff-merges=separate shows a merge commit's diff against each
+// parent, so a note deleted in a merge counts too; Pruned keeps one copy. In a shallow clone it lists only the deletions in the history the
 // clone has.
 func (s *Store) prunedFiles() []prunedFile {
-	out, err := s.Git.Run("log", "--no-renames", "--diff-filter=D", "--raw", "--no-abbrev", "--format=commit %H", "--", notesPath)
+	out, err := s.Git.Run("log", "--no-renames", "--diff-merges=separate", "--diff-filter=D", "--raw", "--no-abbrev", "--format=commit %H", "--", notesPath)
 	if err != nil {
 		return nil
 	}

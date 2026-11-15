@@ -36,9 +36,10 @@ func (s *Store) Save(n note.Note, at []string) (Saved, error) {
 
 // Retire writes a retirement that supersedes the notes named by ids and
 // records why in its Why section. Its title lists the retired titles, cut to
-// note.MaxTitle. Retire returns an error when ids is empty or an id names no
-// note.
+// note.MaxTitle. An id given twice counts once. Retire returns an error when
+// ids is empty or an id names no note.
 func (s *Store) Retire(ids []string, why string) (Saved, error) {
+	ids = unique(ids)
 	if len(ids) == 0 {
 		return Saved{}, errors.New("retire needs the ids of the notes to retire")
 	}
@@ -71,6 +72,7 @@ func (s *Store) create(n note.Note, problems []string) (Saved, error) {
 	for _, x := range ns {
 		ids[x.ID] = true
 	}
+	n.Supersedes = unique(n.Supersedes)
 	var pruned map[string]bool // read from git only when an id names no note on disk
 	for _, id := range n.Supersedes {
 		if !ids[id] && pruned == nil {
@@ -97,4 +99,15 @@ func (s *Store) create(n note.Note, problems []string) (Saved, error) {
 		}
 	}
 	return saved, nil
+}
+
+// unique returns xs without repeats, in the order of first appearance.
+func unique(xs []string) []string {
+	var out []string
+	for _, x := range xs {
+		if !slices.Contains(out, x) {
+			out = append(out, x)
+		}
+	}
+	return out
 }

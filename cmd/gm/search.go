@@ -39,8 +39,10 @@ func find(st *memory.Store, args []string, w io.Writer) error {
 	for _, h := range hits {
 		mark := ""
 		switch {
-		case h.PrunedIn != "":
+		case h.Superseded && h.PrunedIn != "":
 			mark = "  (superseded, pruned in " + h.PrunedIn + ")"
+		case h.PrunedIn != "":
+			mark = "  (pruned in " + h.PrunedIn + ")"
 		case h.Superseded:
 			mark = "  (superseded)"
 		}

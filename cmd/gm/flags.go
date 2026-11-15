@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"io"
+	"strconv"
 	"strings"
 )
 
@@ -13,6 +15,21 @@ func flags(name string) *flag.FlagSet {
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	return fs
+}
+
+// countFlag adds the -n flag to fs with default def. It refuses a negative
+// count, which would otherwise reach a slice bound.
+func countFlag(fs *flag.FlagSet, def int) *int {
+	n := def
+	fs.Func("n", "", func(v string) error {
+		i, err := strconv.Atoi(v)
+		if err != nil || i < 0 {
+			return errors.New("-n needs a count of 0 or more")
+		}
+		n = i
+		return nil
+	})
+	return &n
 }
 
 // jsonFlag adds the --json flag to fs.

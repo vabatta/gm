@@ -17,7 +17,7 @@ import (
 func list(st *memory.Store, args []string, w io.Writer) error {
 	fs := flags("list")
 	by := fs.String("by", "type", "")
-	limit := fs.Int("n", 0, "")
+	limit := countFlag(fs, 0)
 	all := fs.Bool("all", false, "")
 	asJSON := jsonFlag(fs)
 	if err := parse(fs, args); err != nil {

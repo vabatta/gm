@@ -20,14 +20,14 @@ var ranker search.Ranker = bm25.Ranker{}
 func find(st *memory.Store, args []string, w io.Writer) error {
 	fs := flags("search")
 	q := search.Query{}
-	fs.IntVar(&q.Limit, "n", 5, "")
+	limit := countFlag(fs, 5)
 	fs.StringVar(&q.Type, "type", "", "")
 	fs.BoolVar(&q.All, "all", false, "")
 	asJSON := jsonFlag(fs)
 	if err := parse(fs, args); err != nil {
 		return err
 	}
-	q.Words = strings.Join(fs.Args(), " ")
+	q.Words, q.Limit = strings.Join(fs.Args(), " "), *limit
 	hits, err := search.Find(st, ranker, q)
 	if err != nil {
 		return err

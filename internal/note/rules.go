@@ -34,7 +34,9 @@ func (n Note) Problems() []string {
 		p = append(p, "a retirement must supersede at least one note")
 	}
 	secs := Sections(n.Body)
-	if len(secs) > len(tmpl) {
+	// Count heading lines, not sections: text that repeats a template heading
+	// adds a line but no new section, and the first copy is lost on read.
+	if strings.Count("\n"+n.Body, "\n## ") > len(tmpl) {
 		p = append(p, `section text must not start a line with "## "`)
 	}
 	for _, s := range tmpl {

@@ -17,7 +17,7 @@ import (
 func list(st *memory.Store, args []string, w io.Writer) error {
 	fs := flags("list")
 	by := fs.String("by", "type", "")
-	limit := countFlag(fs, 0)
+	limit := countFlag(fs, -1) // -1 is the default, every note
 	all := fs.Bool("all", false, "")
 	asJSON := jsonFlag(fs)
 	if err := parse(fs, args); err != nil {
@@ -39,7 +39,7 @@ func list(st *memory.Store, args []string, w io.Writer) error {
 		}
 		return cmp.Or(byType, cmp.Compare(b.Created, a.Created))
 	})
-	if *limit > 0 && len(ns) > *limit {
+	if *limit >= 0 && len(ns) > *limit {
 		ns = ns[:*limit]
 	}
 	if *asJSON {

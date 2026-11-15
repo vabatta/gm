@@ -44,7 +44,7 @@ func Pin(r *git.Repo, spec string) (Anchor, error) {
 	if typ != "blob" {
 		return Anchor{}, fmt.Errorf("at %s: the path names a directory, not a file", spec)
 	}
-	if dirty, _ := r.Run("status", "--porcelain", "--", a.Path); dirty != "" {
+	if !r.AtHEAD([]string{a.Path})[a.Path] {
 		return Anchor{}, fmt.Errorf("at %s: the file has uncommitted changes; commit the code first, then save the note", spec)
 	}
 	if a.From > 0 {

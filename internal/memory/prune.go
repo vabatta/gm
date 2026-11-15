@@ -16,34 +16,24 @@ const notesPath = ".memory/notes"
 // Prune deletes the file of every note that another note supersedes and
 // returns the paths it deleted. A superseded note whose file is not committed
 // as it is at HEAD has no commit that would keep it, so Prune keeps it and
-// returns its path in kept. That includes a file that git ignores, which git
-// status lists only with --ignored. Prune leaves live notes, retirements included, in
-// place.
+// returns its path in kept. git.Repo.AtHEAD decides that by content, so an
+// ignored file, a change hidden from git status, and a note inside a
+// submodule all count as not committed. Prune leaves live notes, retirements
+// included, in place.
 func (s *Store) Prune() (pruned, kept []string, err error) {
 	ns, _ := s.Load()
 	dead := Dead(ns)
-	// -z prints each path as it is: without it, git quotes a path with
-	// unusual characters and the lookup by note file misses it. A rename or
-	// copy entry is followed by its original path, which is dirty too.
-	status, err := s.Git.Run("status", "--porcelain", "-z", "--untracked-files=all", "--ignored", "--", notesPath)
-	if err != nil {
-		return nil, nil, err
-	}
-	dirty := map[string]bool{}
-	entries := strings.Split(status, "\x00")
-	for i := 0; i < len(entries); i++ {
-		if e := entries[i]; len(e) > 3 {
-			dirty[e[3:]] = true
-			if e[0] == 'R' || e[0] == 'C' {
-				i++
-				dirty[entries[min(i, len(entries)-1)]] = true
-			}
+	var files []string
+	for _, n := range ns {
+		if dead[n.ID] {
+			files = append(files, n.File)
 		}
 	}
+	at := s.Git.AtHEAD(files)
 	for _, n := range ns {
 		switch {
 		case !dead[n.ID]:
-		case dirty[n.File]:
+		case !at[n.File]:
 			kept = append(kept, n.File)
 		default:
 			if err := os.Remove(filepath.Join(s.Git.Root, filepath.FromSlash(n.File))); err != nil {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"io"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -17,16 +18,17 @@ func flags(name string) *flag.FlagSet {
 	return fs
 }
 
-// countFlag adds the -n flag to fs with default def. It refuses a negative
-// count, which would otherwise reach a slice bound.
+// countFlag adds the -n flag to fs with default def. It refuses anything but
+// a count of 0 or more, because a negative count would reach a slice bound,
+// and it caps a count too large for an int, which asks for every result.
 func countFlag(fs *flag.FlagSet, def int) *int {
 	n := def
 	fs.Func("n", "", func(v string) error {
-		i, err := strconv.Atoi(v)
-		if err != nil || i < 0 {
+		u, err := strconv.ParseUint(v, 10, 64)
+		if err != nil && !errors.Is(err, strconv.ErrRange) {
 			return errors.New("-n needs a count of 0 or more")
 		}
-		n = i
+		n = int(min(u, math.MaxInt))
 		return nil
 	})
 	return &n

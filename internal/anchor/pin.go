@@ -15,8 +15,8 @@ import (
 // ":" needs no escaping. Otherwise a final ":N" or ":N-M" is the line range.
 // Pin refuses a file that is not committed at HEAD or that has uncommitted
 // changes, because the anchor must show the code that the note describes. It
-// also refuses an empty path, a directory, and a range past the end of the
-// file.
+// also refuses an empty path, a path with a line break, which the one-line
+// header cannot hold, a directory, and a range past the end of the file.
 func Pin(r *git.Repo, spec string) (Anchor, error) {
 	head, err := r.Run("rev-parse", "--short=12", "HEAD")
 	if err != nil {
@@ -25,6 +25,9 @@ func Pin(r *git.Repo, spec string) (Anchor, error) {
 	a := Anchor{Commit: head, Path: strings.TrimPrefix(spec, "./")}
 	if strings.Trim(a.Path, "/.") == "" {
 		return Anchor{}, fmt.Errorf("at %q: an anchor needs a path from the repository root", spec)
+	}
+	if strings.ContainsAny(a.Path, "\r\n") {
+		return Anchor{}, fmt.Errorf("at %q: a path with a line break cannot be an anchor", spec)
 	}
 	typ, err := r.Run("cat-file", "-t", "HEAD:"+a.Path)
 	if err != nil {
@@ -57,11 +60,16 @@ func Pin(r *git.Repo, spec string) (Anchor, error) {
 // For a line range it returns lines 1 to To, so index i holds line i+1 and the
 // caller drops the lines before From. For a whole file it returns every line.
 func Code(r *git.Repo, base string, a Anchor) ([]string, error) {
-	content, err := r.Run("cat-file", "-p", base+":"+a.Path)
+	// Raw keeps blank lines at the end of the file, which Run would trim. Only
+	// the newline that ends the last line is not a line of its own.
+	content, err := r.Raw("", "cat-file", "-p", base+":"+a.Path)
 	if err != nil {
 		return nil, err
 	}
-	lines := strings.Split(content, "\n")
+	var lines []string
+	if content != "" {
+		lines = strings.Split(strings.TrimSuffix(content, "\n"), "\n")
+	}
 	if a.From > 0 && a.To <= len(lines) {
 		lines = lines[:a.To]
 	}

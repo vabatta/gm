@@ -3,6 +3,7 @@ package memory
 import (
 	"fmt"
 	"maps"
+	"path"
 	"slices"
 	"strings"
 
@@ -76,7 +77,7 @@ func (s *Store) Lint(review bool) Report {
 	}
 	resolved := s.Anchors(live)
 	merged := s.onDefault()
-	onBranch := func(n note.Note) bool { return merged != nil && !merged[n.File] }
+	onBranch := func(n note.Note) bool { return merged != nil && !merged[path.Base(n.File)] }
 	unseen := 0
 	for _, n := range live {
 		for _, p := range n.Problems() {

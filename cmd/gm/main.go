@@ -72,12 +72,12 @@ func run(args []string, dir string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	cmd, args := args[0], args[1:]
-	st, err := memory.Open(dir)
-	if err == nil {
-		if do, ok := commands[cmd]; ok {
+	do, ok := commands[cmd]
+	err := fmt.Errorf("unknown command %q; run gm help", cmd)
+	if ok {
+		var st *memory.Store
+		if st, err = memory.Open(dir); err == nil {
 			err = do(st, args, stdout)
-		} else {
-			err = fmt.Errorf("unknown command %q; run gm help", cmd)
 		}
 	}
 	var lintErr lintFailed

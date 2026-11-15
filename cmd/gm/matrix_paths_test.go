@@ -431,3 +431,39 @@ func TestMatrixPaths(t *testing.T) {
 		})
 	}
 }
+
+// TestMatrixNotesDir runs every command against notes directories of unusual
+// shapes, set with gm.dir in .gmconfig, from DIRECTORY in gm(1).
+func TestMatrixNotesDir(t *testing.T) {
+	dirs := []string{".agents/memory", "docs/memory", "notes dir", "mémoire", "日本語/メモ", "a'b", "a:b", "-dash", "a*b", "a[1]", "lead/ trail "}
+	for _, dir := range dirs {
+		t.Run(dir, func(t *testing.T) {
+			t.Parallel()
+			r := newRepo(t)
+			r.setDir(dir)
+			r.commit("config")
+			prefix := strings.TrimSuffix(filepath.ToSlash(filepath.Clean(dir)), "/") + "/"
+			old := r.fact("Fetch retries twice", "--at", "fetch.go:3")
+			r.commit("note")
+			has(t, r.ok("search", "fetch"), old, prefix+old)
+			has(t, r.ok("show", old), "Fetch retries twice", "func Fetch() {}")
+			has(t, r.ok("list"), old)
+			if res := r.gm("lint"); res.code != 0 {
+				t.Fatalf("lint: want exit 0, got %s", res)
+			}
+			rev := r.fact("Fetch retries five times", "--supersedes", old)
+			r.commit("revise")
+			has(t, r.ok("prune"), "pruned "+prefix+old)
+			r.commit("prune")
+			has(t, r.ok("show", old), "pruned in")
+			has(t, r.ok("search", "--all", "fetch"), old)
+			has(t, r.ok("list", "--all"), old)
+			r.ok("retire", rev, "--why", "Fetch no longer retries at all")
+			r.fact("Fetch retries again", "--supersedes", old)
+			r.commit("more")
+			if res := r.gm("lint"); res.code != 0 {
+				t.Fatalf("lint after prune: want exit 0, got %s", res)
+			}
+		})
+	}
+}

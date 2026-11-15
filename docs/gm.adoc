@@ -218,13 +218,26 @@ names another one:
 *.gmconfig* uses the syntax of *git-config*(1), and *gm* reads it with *git
 config --file*. Commit it, so every clone, branch and worktree of the
 repository uses the same directory. *gm* does not read *gm.dir* from the git
-configuration of a clone, because each clone has its own. _dir_ is a path
-relative to the root of the worktree that stays inside it; *gm* refuses to run
-when it is empty, absolute or leads out of the worktree.
+configuration of a clone, because each clone has its own.
+
+_dir_ is a path relative to the root of the worktree. *gm* refuses to run, and
+quotes _dir_ as *.gmconfig* writes it, when _dir_ is empty or absolute, leads
+out of the worktree directly or through a symbolic link, has a *.git*
+component, which git never commits, or holds a double quote, a backslash or a
+control character.
 
 To move the notes, set _dir_ and move the files with *git mv* in one commit.
-*gm* reads notes, pruned ones included, only from the notes directory, so
-after a move *show* no longer finds a note pruned in the old one.
+Commands that read notes from git history read every directory that
+*.gmconfig* named in the history of HEAD, and *.agents/memory/*. They match a
+note by its file name, which starts with its id, and a commit that only moves
+a note does not count as the commit that added it. So after a move *show*
+still finds a note pruned in the old directory, *lint* still accepts a
+*supersedes* entry that names it, an anchor keeps the base it had, and a branch
+that only moves notes does not count them as new.
+
+Earlier releases kept notes in *.memory/notes/*, and *gm* no longer reads
+them there. To upgrade such a repository, move the notes with *mkdir -p .agents
+&& git mv .memory/notes .agents/memory*, or set _dir_ to *.memory/notes*.
 
 == REVISIONS AND TOPICS
 

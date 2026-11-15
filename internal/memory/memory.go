@@ -14,7 +14,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
+	"unicode"
 
 	"github.com/vabatta/gm/internal/git"
 	"github.com/vabatta/gm/internal/note"
@@ -27,6 +29,8 @@ type Store struct {
 	// notesPath is NotesDir relative to the worktree root, in the slash form
 	// git prints.
 	notesPath string
+	// history caches historyPaths.
+	history []string
 }
 
 // defaultNotes is the notes directory when .gmconfig names none.
@@ -36,21 +40,92 @@ const defaultNotes = ".agents/memory"
 // The notes directory is gm.dir in the committed file .gmconfig, read with git
 // config so its syntax is git's, and .agents/memory when that is not set.
 // gm.dir in the git configuration of a clone does not count, because each
-// clone has its own and the notes must be in one place for all of them.
+// clone has its own and the notes must be in one place for all of them. Open
+// runs git config only when .gmconfig exists.
 func Open(dir string) (*Store, error) {
 	r, err := git.Open(dir)
 	if err != nil {
 		return nil, err
 	}
-	d, err := r.Run("config", "--file", ".gmconfig", "--default", defaultNotes, "gm.dir")
-	if err != nil {
-		return nil, err
+	d := defaultNotes
+	if _, err := os.Lstat(filepath.Join(r.Root, ".gmconfig")); err == nil {
+		if d, err = r.Run("config", "--file", ".gmconfig", "--default", defaultNotes, "gm.dir"); err != nil {
+			return nil, err
+		}
 	}
-	d = filepath.Clean(d)
-	if !filepath.IsLocal(d) || d == "." {
-		return nil, fmt.Errorf("gm.dir in .gmconfig must be a directory inside the worktree, relative to its root, not %q", d)
+	p, ok := notesPath(d)
+	if !ok || escapes(r.Root, p) {
+		return nil, fmt.Errorf("gm.dir in .gmconfig must name a directory inside the worktree, relative to its root, with no .git component and no quote, backslash or control character, not %q", d)
 	}
-	return &Store{Git: r, notesPath: filepath.ToSlash(d)}, nil
+	return &Store{Git: r, notesPath: p}, nil
+}
+
+// notesPath cleans the gm.dir value d to the slash form git prints and reports
+// whether it is a usable notes directory: local, not the root, with no .git
+// component, which git never commits, and with no character that git quotes
+// in the paths it prints.
+func notesPath(d string) (string, bool) {
+	if strings.ContainsFunc(d, func(c rune) bool { return c == '"' || c == '\\' || unicode.IsControl(c) }) {
+		return "", false
+	}
+	c := filepath.Clean(d)
+	if !filepath.IsLocal(c) || c == "." {
+		return "", false
+	}
+	for part := range strings.SplitSeq(filepath.ToSlash(c), "/") {
+		if strings.EqualFold(part, ".git") {
+			return "", false
+		}
+	}
+	return filepath.ToSlash(c), true
+}
+
+// escapes reports whether the notes directory p leads out of the worktree at
+// root through a symbolic link, judged by the deepest part of it that exists.
+func escapes(root, p string) bool {
+	at := filepath.Join(root, filepath.FromSlash(p))
+	for {
+		if _, err := os.Lstat(at); err == nil || at == root {
+			break
+		}
+		at = filepath.Dir(at)
+	}
+	realRoot, err1 := filepath.EvalSymlinks(root)
+	real, err2 := filepath.EvalSymlinks(at)
+	if err1 != nil || err2 != nil {
+		return true
+	}
+	rel, err := filepath.Rel(realRoot, real)
+	return err != nil || !filepath.IsLocal(rel) && rel != "."
+}
+
+// historyPaths returns the notes directories whose notes git history may
+// hold: .agents/memory, the current one, and every gm.dir that .gmconfig set
+// in the history of HEAD. So after a move, history reads still find the notes
+// of the old directory. It reads the history of .gmconfig once per Store.
+func (s *Store) historyPaths() []string {
+	if s.history != nil {
+		return s.history
+	}
+	s.history = []string{defaultNotes}
+	add := func(p string) {
+		if !slices.Contains(s.history, p) {
+			s.history = append(s.history, p)
+		}
+	}
+	add(s.notesPath)
+	commits, _ := s.Git.Run("log", "--format=%H", "--", ".gmconfig")
+	for c := range strings.SplitSeq(commits, "\n") {
+		if c == "" {
+			continue
+		}
+		if d, err := s.Git.Run("config", "--blob", c+":.gmconfig", "gm.dir"); err == nil {
+			if p, ok := notesPath(d); ok {
+				add(p)
+			}
+		}
+	}
+	return s.history
 }
 
 // NotesDir returns the directory that holds one markdown file per note.

@@ -4,6 +4,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -46,16 +47,18 @@ func (s *Store) Prune() (pruned, kept []string, err error) {
 // holds the commit, the file's path, and the id of the blob the file held.
 type prunedFile struct{ commit, path, blob string }
 
-// prunedFiles lists the note files deleted in the history of HEAD, newest
-// deletion first, with one git log --raw call. The raw diff names the blob
-// of each deleted file, so Pruned can read the note by blob id without walking
-// the tree of the commit before. --no-renames keeps git from pairing a deleted
-// note with a similar note added in the same commit, which would hide the
-// deletion. --diff-merges=separate shows a merge commit's diff against each
-// parent, so a note deleted in a merge counts too; Pruned keeps one copy. In a shallow clone it lists only the deletions in the history the
-// clone has.
+// prunedFiles lists the note files deleted in the history of HEAD, in any
+// of historyPaths, newest deletion first, with one git log --raw call. The raw
+// diff names the blob of each deleted file, so Pruned can read the note by
+// blob id without walking the tree of the commit before. --no-renames keeps
+// git from pairing a deleted note with a similar note added in the same
+// commit, which would hide the deletion. --diff-merges=separate shows a merge
+// commit's diff against each parent, so a note deleted in a merge counts too;
+// Pruned keeps one copy. A commit that moved notes to another notes directory
+// lists them too, and callers skip the notes still on disk. In a shallow clone
+// it lists only the deletions in the history the clone has.
 func (s *Store) prunedFiles() []prunedFile {
-	out, err := s.Git.Run("log", "--no-renames", "--diff-merges=separate", "--diff-filter=D", "--raw", "--no-abbrev", "--format=commit %H", "--", s.notesPath)
+	out, err := s.log("--diff-merges=separate", "--diff-filter=D", "--raw", "--no-abbrev")
 	if err != nil {
 		return nil
 	}
@@ -68,7 +71,7 @@ func (s *Store) prunedFiles() []prunedFile {
 		}
 		// :100644 000000 <old blob> <new blob> D<TAB><path>
 		meta, file, ok := strings.Cut(line, "\t")
-		if f := strings.Fields(meta); ok && len(f) == 5 && strings.HasSuffix(file, ".md") && path.Dir(file) == s.notesPath {
+		if f := strings.Fields(meta); ok && len(f) == 5 && strings.HasSuffix(file, ".md") && slices.Contains(s.historyPaths(), path.Dir(file)) {
 			files = append(files, prunedFile{commit, file, f[2]})
 		}
 	}

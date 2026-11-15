@@ -93,6 +93,11 @@ func (s *Store) Lint(review bool) Report {
 			}
 		}
 	}
+	if merged == nil && slices.ContainsFunc(live, func(n note.Note) bool {
+		return slices.ContainsFunc(resolved[n.File], func(r anchor.Resolved) bool { return r.Anchor.From > 0 })
+	}) {
+		rep.Warnings = append(rep.Warnings, "no default branch (origin/HEAD, main, master, origin/main or origin/master), so line-range anchors on this branch were not checked for code that changed after the note")
+	}
 	if unseen > 0 {
 		rep.Warnings = append(rep.Warnings, fmt.Sprintf("shallow clone: %d anchor commits are not here, so only their files were checked; fetch the full history to check them", unseen))
 	}

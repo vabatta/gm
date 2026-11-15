@@ -62,15 +62,17 @@ func (s *Store) resolve(ns []note.Note, added map[string]string) map[string][]an
 	return m
 }
 
-// defaultBranch returns the branch that work merges into: origin/HEAD, or else
-// main, or else master. It is empty when none exists.
+// defaultBranch returns the branch that work merges into: the first that
+// exists of origin/HEAD, main, master, origin/main and origin/master. The
+// remote branches cover a CI checkout, which often has no local branch and no
+// origin/HEAD. It is empty when none exists.
 func (s *Store) defaultBranch() string {
 	if ref, err := s.Git.Run("symbolic-ref", "-q", "--short", "refs/remotes/origin/HEAD"); err == nil && ref != "" {
 		return ref
 	}
-	for _, b := range []string{"main", "master"} {
-		if _, err := s.Git.Run("rev-parse", "--verify", "-q", "refs/heads/"+b); err == nil {
-			return b
+	for _, ref := range []string{"refs/heads/main", "refs/heads/master", "refs/remotes/origin/main", "refs/remotes/origin/master"} {
+		if _, err := s.Git.Run("rev-parse", "--verify", "-q", ref); err == nil {
+			return strings.TrimPrefix(strings.TrimPrefix(ref, "refs/heads/"), "refs/remotes/")
 		}
 	}
 	return ""

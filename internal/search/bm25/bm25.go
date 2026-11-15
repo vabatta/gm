@@ -1,6 +1,7 @@
 // Package bm25 is the search adapter that ranks notes with BM25, the
-// relevance formula that SQLite FTS5 uses, computed over the note files on
-// every search, with no index to build, keep fresh or git-ignore.
+// relevance formula that SQLite FTS5 uses. It computes the scores over the
+// note files on every search, so there is no index to build, keep fresh or
+// git-ignore.
 package bm25
 
 import (
@@ -14,12 +15,12 @@ import (
 
 // Ranker ranks with BM25 over three fields. A query word counts 5 times in
 // the title, 3 times in the keywords, topic and anchor paths, and once in the
-// body. Document frequency and average length cover every note it is given,
-// as in FTS5.
+// body. Rank computes document frequency and average length over every note
+// it is given, as FTS5 does.
 type Ranker struct{}
 
 // k1 and b are the BM25 parameters. They have the SQLite FTS5 values, so the
-// ranking matches the FTS5 index that gm used before.
+// ranking matches FTS5.
 const k1, b = 1.2, 0.75
 
 // split turns the separators in topics and paths into spaces, so that
@@ -64,7 +65,7 @@ func (Ranker) Rank(ns []note.Note, terms []string) []float64 {
 	avg := float64(total) / float64(max(len(ns), 1))
 	scores := make([]float64, len(ns))
 	for i, tf := range tfs {
-		// Sum in the order of terms, not of the map: float addition depends
+		// Sum in the order of terms, not of the map. Float addition depends
 		// on order, and near-tied notes would swap places between runs.
 		for _, w := range terms {
 			f := tf[w]

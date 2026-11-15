@@ -11,25 +11,30 @@ import (
 )
 
 // Report is the result of Lint. Problems make gm lint exit 1. Review lists the
-// anchors of live notes whose code changed since, and Warnings lists what Lint
-// could not check. Neither Review nor Warnings makes gm lint fail.
+// anchors of live notes whose code changed after their base. Warnings lists
+// what Lint could not check. Neither Review nor Warnings makes gm lint fail.
 type Report struct {
 	Problems []string `json:"problems"`
 	Review   []string `json:"review,omitempty"`
 	Warnings []string `json:"warnings,omitempty"`
 }
 
-// Lint checks every note. A problem is a file that does not parse, an id used
-// by more than one file, a supersedes entry that names no note on disk and no
-// note pruned in the history of HEAD, a live note that breaks a rule in
-// note.Problems, an anchor whose file anchor.Resolve finds gone, a line-range
-// anchor of a note not yet on the default branch whose lines changed after
-// its base, or a topic with more than one live note. A note on a branch is
-// about to be merged, and a squash merge would hide that its lines changed, so
-// there the change is a problem rather than a review line. Superseded notes
-// are history, so of the per-note checks only the supersedes check applies to
-// them. With review, Lint also lists every other anchor of a live note whose
-// code changed after its base.
+// Lint checks every note and reports these problems:
+//   - a file that does not parse
+//   - an id that more than one file uses
+//   - a supersedes entry that names no note on disk and no note pruned in the
+//     history of HEAD
+//   - a live note that breaks a rule in note.Problems
+//   - an anchor whose file anchor.Resolve finds gone
+//   - a line-range anchor of a note not yet on the default branch whose lines
+//     changed after its base
+//   - a topic with more than one live note
+//
+// A note on a branch is about to merge, and a squash merge would hide that
+// its lines changed. So Lint reports that change as a problem rather than a
+// review line. Superseded notes are history, so of the per-note checks Lint
+// runs only the supersedes check on them. With review, Lint also lists every
+// other anchor of a live note whose code changed after its base.
 func (s *Store) Lint(review bool) Report {
 	ns, bad := s.Load()
 	rep := Report{Problems: bad}

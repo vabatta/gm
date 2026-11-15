@@ -1,7 +1,7 @@
 // Package memory reads and writes the notes of one repository, one file per
 // note in <root>/.memory/notes.
 //
-// A note file is never edited. A revision is a new note that names the old one
+// gm never edits a note file. A revision is a new note that names the old one
 // in its supersedes list. A retirement is a note that supersedes notes with no
 // successor. Each save adds a new file, so branches that save in parallel merge
 // without conflicts. When two branches revise one topic, both notes stay live
@@ -82,7 +82,7 @@ func Dead(ns []note.Note) map[string]bool {
 	return dead
 }
 
-// Live returns the notes that hold now: those that no note supersedes.
+// Live returns the notes that hold now, which are those that no note supersedes.
 // Retirements are live, because their reason often says what replaced the
 // notes they retire.
 func Live(ns []note.Note) []note.Note {
@@ -115,7 +115,7 @@ func (s *Store) Get(id string) (note.Note, error) {
 
 // Write writes n to a new file in NotesDir without checking it and returns n
 // with File set. It creates the file with O_EXCL, so it never overwrites a
-// note. engram.Import calls it directly for migrated notes.
+// note. importer.Import calls it directly for migrated notes.
 func (s *Store) Write(n note.Note) (note.Note, error) {
 	if err := os.MkdirAll(s.NotesDir(), 0o755); err != nil {
 		return n, err

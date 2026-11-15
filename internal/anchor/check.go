@@ -15,14 +15,14 @@ type Target struct{ Spec, Added string }
 type Resolved struct {
 	Spec   string
 	Anchor Anchor
-	// Base is the anchor's own commit while it is in the history of HEAD;
-	// otherwise the commit that added the note, which a squash or rebase merge
-	// leaves in its place; otherwise HEAD.
+	// Base is the anchor's own commit while it is in the history of HEAD.
+	// Otherwise it is the commit that added the note, which a squash or rebase
+	// merge leaves in its place, or else HEAD.
 	Base string
 	// Fallback is true when Base is not the anchor's own commit.
 	Fallback bool
-	// Unseen is true in a shallow clone that lacks the anchor's commit. Only
-	// the file was checked, because the clone cannot tell what changed.
+	// Unseen is true in a shallow clone that lacks the anchor's commit. Resolve
+	// then checks only the file, because the clone cannot tell what changed.
 	Unseen bool
 	// Problem says why the anchor no longer points at code, or is empty.
 	Problem string
@@ -31,10 +31,10 @@ type Resolved struct {
 // Resolve picks the base of each target and checks that its file still exists
 // at HEAD, naming the new path when git sees the file as renamed since the
 // base. The number of git processes does not grow with the number of
-// anchors: one cat-file --batch-check looks up every anchor commit and every
-// HEAD:path, one rev-list --stdin lists the anchor commits that HEAD does not
-// contain, and one rev-parse tells whether the clone is shallow. Rename
-// detection runs only for missing files, once per base.
+// anchors. One cat-file --batch-check looks up every anchor commit and every
+// HEAD:path. One rev-list --stdin lists the anchor commits that HEAD does not
+// contain. One rev-parse tells whether the clone is shallow. Resolve runs
+// rename detection only for missing files, once per base.
 func Resolve(r *git.Repo, targets []Target) []Resolved {
 	res := make([]Resolved, len(targets))
 	var objects []string
@@ -118,7 +118,7 @@ func Resolve(r *git.Repo, targets []Target) []Resolved {
 }
 
 // renamed maps old paths to new paths for the files that git diff -M finds
-// renamed between commit and HEAD. Copies are skipped, because after a copy the
+// renamed between commit and HEAD. It skips copies, because after a copy the
 // original file still exists.
 func renamed(r *git.Repo, commit string) map[string]string {
 	out, _ := r.Run("diff", "-M", "--name-status", "-z", commit, "HEAD")

@@ -3,8 +3,8 @@ package main
 // Behaviour specs for gm. Each *_test.go file holds one section of gm(1) or
 // gm-note(5) as one test, with one subtest per sentence. This file holds the
 // harness they share. Every spec runs the real gm command in its own process
-// against a throwaway git repository and checks only what a user sees: the
-// exit status, stdout, stderr and the files in the repository.
+// against a throwaway git repository. It checks only what a user sees, which
+// is the exit status, stdout, stderr and the files in the repository.
 
 import (
 	"encoding/json"
@@ -16,7 +16,7 @@ import (
 	"testing"
 )
 
-// TestMain lets the test binary act as gm: with GM_SPEC_RUN_MAIN set it runs
+// TestMain lets the test binary act as gm. With GM_SPEC_RUN_MAIN=1 it runs
 // main instead of the tests, so each spec runs gm as its own process.
 func TestMain(m *testing.M) {
 	if os.Getenv("GM_SPEC_RUN_MAIN") == "1" {
@@ -120,7 +120,7 @@ func gmIn(t *testing.T, dir string, args ...string) result {
 
 func (r *repo) gm(args ...string) result { r.t.Helper(); return gmIn(r.t, r.dir, args...) }
 
-// ok runs gm and fails the spec unless it exits 0; it returns stdout.
+// ok runs gm, fails the spec unless gm exits 0, and returns stdout.
 func (r *repo) ok(args ...string) string {
 	r.t.Helper()
 	res := r.gm(args...)
@@ -174,7 +174,7 @@ func refused(t *testing.T, res result, want ...string) {
 	has(t, res.stderr, want...)
 }
 
-// ids returns the ids that `gm search` or `gm list` printed with --json, in order.
+// ids returns the ids that gm search or gm list printed with --json, in order.
 func ids(t *testing.T, out string) []string {
 	t.Helper()
 	var xs []struct{ ID string }
@@ -196,10 +196,10 @@ func equal(t *testing.T, got, want []string) {
 }
 
 // merged makes a repository whose main branch holds a branch that committed
-// code and then a note anchored to it, merged with strategy "squash" or
-// "rebase" while main moved on. It returns a clone over file://, which holds
-// only what main reaches, as a clone from GitHub does after the branch is
-// deleted, and the note's id.
+// code and then a note anchored to it. strategy, "squash" or "rebase", picks
+// how the branch merges while main moves on. merged returns a clone over
+// file:// and the note's id. The clone holds only what main reaches, as a
+// clone from GitHub does once the branch is gone.
 func merged(t *testing.T, strategy string) (*repo, string) {
 	t.Helper()
 	r := newRepo(t)

@@ -34,8 +34,10 @@ func (s *Store) Save(n note.Note, at []string) (Saved, error) {
 	return s.create(n, problems)
 }
 
-// Retire writes a retirement that supersedes the notes ids and records why in
-// its Why section. Its title lists the retired titles, cut to note.MaxTitle.
+// Retire writes a retirement that supersedes the notes named by ids and
+// records why in its Why section. Its title lists the retired titles, cut to
+// note.MaxTitle. Retire returns an error when ids is empty or an id names no
+// note.
 func (s *Store) Retire(ids []string, why string) (Saved, error) {
 	if len(ids) == 0 {
 		return Saved{}, errors.New("retire needs the ids of the notes to retire")

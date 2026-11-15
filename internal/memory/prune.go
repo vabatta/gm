@@ -16,7 +16,8 @@ const notesPath = ".memory/notes"
 // Prune deletes the file of every note that another note supersedes and
 // returns the paths it deleted. A superseded note whose file is not committed
 // as it is at HEAD has no commit that would keep it, so Prune keeps it and
-// returns its path in kept. Live notes, retirements included, stay.
+// returns its path in kept. Prune leaves live notes, retirements included, in
+// place.
 func (s *Store) Prune() (pruned, kept []string, err error) {
 	ns, _ := s.Load()
 	dead := Dead(ns)
@@ -45,15 +46,15 @@ func (s *Store) Prune() (pruned, kept []string, err error) {
 	return pruned, kept, nil
 }
 
-// prunedFile is a note file that a commit in the history of HEAD deleted:
-// the commit, the file's path, and the id of the blob it held.
+// prunedFile is a note file that a commit in the history of HEAD deleted. It
+// holds the commit, the file's path, and the id of the blob the file held.
 type prunedFile struct{ commit, path, blob string }
 
 // prunedFiles lists the note files deleted in the history of HEAD, newest
 // deletion first, with one git log --raw call. The raw diff names the blob
-// of each deleted file, so the note can be read by blob id without walking
-// the tree of the commit before. A shallow clone lists only the deletions in
-// the history it has.
+// of each deleted file, so Pruned can read the note by blob id without walking
+// the tree of the commit before. In a shallow clone it lists only the
+// deletions in the history the clone has.
 func (s *Store) prunedFiles() []prunedFile {
 	out, err := s.Git.Run("log", "--diff-filter=D", "--raw", "--no-abbrev", "--format=commit %H", "--", notesPath)
 	if err != nil {
@@ -91,8 +92,8 @@ func (s *Store) prunedIDs() map[string]bool {
 const idLen = 23
 
 // Pruned reads the notes deleted in the history of HEAD back from git, by the
-// blob each deleted file held, with one cat-file --batch call. Each note has
-// PrunedIn set to the commit that deleted it, cut to 12 hex characters.
+// blob each deleted file held, with one cat-file --batch call. It sets each
+// note's PrunedIn to the commit that deleted it, cut to 12 hex characters.
 func (s *Store) Pruned() []note.Note {
 	files := s.prunedFiles()
 	if len(files) == 0 {

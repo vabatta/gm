@@ -11,8 +11,9 @@ import (
 )
 
 // ranker is the search adapter gm uses. Another ranker, such as an index or
-// a git grep prefilter, is an adapter package that implements search.Ranker
-// and a change of this line; bench/run.sh compares it with the one before.
+// a git grep prefilter, is an adapter package that implements search.Ranker.
+// Switching to it changes only this line. bench/run.sh compares it with the
+// one before.
 var ranker search.Ranker = bm25.Ranker{}
 
 // find runs gm search.

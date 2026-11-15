@@ -1,11 +1,11 @@
 // Package search finds the notes that match a query.
 //
 // It is the port of a ports-and-adapters design, like package importer. A
-// Ranker is the port: an adapter scores notes against the query words, and
-// nothing else. The rules every ranker shares are written once, in Find:
-// which words of the query count, which notes are searched, and how scores
-// become hits. Adapters live in subpackages, such as search/bm25, and the
-// command picks one; this package imports none.
+// Ranker is the port. An adapter scores notes against the query words, and
+// does nothing else. Find holds the rules every ranker shares. It decides which
+// words of the query count, which notes it searches, and how scores become
+// hits. Adapters live in subpackages, such as search/bm25. The command picks
+// one, and this package imports none.
 package search
 
 import (
@@ -23,7 +23,7 @@ import (
 type Ranker interface {
 	// Rank scores each note in ns against terms, the lowercase query words
 	// without stop words. The result has one score per note, in the order of
-	// ns; 0 means the note does not match.
+	// ns. A score of 0 means the note does not match.
 	Rank(ns []note.Note, terms []string) []float64
 }
 
@@ -71,9 +71,10 @@ func Words(s string) []string { return wordRe.FindAllString(strings.ToLower(s), 
 
 // Find returns at most q.Limit notes that match q, best first, as r ranks
 // them. r scores every note on disk, superseded ones included, so corpus
-// statistics do not depend on --all; --all adds the pruned notes from git
-// history. Notes with equal scores keep file order, so the older note comes
-// first.
+// statistics do not depend on --all. With q.All, Find adds the pruned notes
+// from git history. Notes with equal scores keep file order, so the older note
+// comes first. Find returns an error when no query word is left after it drops
+// the stop words.
 func Find(st *memory.Store, r Ranker, q Query) ([]Hit, error) {
 	var terms []string
 	for _, w := range Words(q.Words) {

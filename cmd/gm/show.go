@@ -12,7 +12,7 @@ import (
 
 // code is the code of one anchor as gm show prints it. From is the number of
 // the first line in Lines. When git cannot read the code, for example because
-// the commit is gone, Error is set instead.
+// the commit is gone, show sets Error instead.
 type code struct {
 	Anchor string   `json:"anchor"`
 	ReadAt string   `json:"read_at,omitempty"` // the base, when it is not the anchor's own commit
@@ -22,8 +22,8 @@ type code struct {
 }
 
 // show runs gm show. It prints the note file, then the code of each anchor,
-// read at the anchor's commit. For a line range it prints those lines. For a
-// whole file it prints the first 40 lines.
+// read at the base commit that Store.Anchors picks. For a line range it prints
+// those lines. For a whole file it prints the first 40 lines.
 func show(st *memory.Store, args []string, w io.Writer) error {
 	fs := flags("show")
 	asJSON := jsonFlag(fs)

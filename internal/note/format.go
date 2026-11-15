@@ -7,8 +7,8 @@ import (
 	"strings"
 )
 
-// Render returns the content of the note's file. Empty optional fields are
-// left out of the header.
+// Render returns the content of the note's file. It leaves empty optional
+// fields out of the header.
 func (n Note) Render() string {
 	t, _ := json.Marshal(n.Title)
 	h := []string{"---", "id: " + n.ID, "type: " + n.Type, "title: " + string(t)}
@@ -61,11 +61,11 @@ func parseList(v string) []string {
 const Format = "1"
 
 // Parse reads the content of a note file. file is the file's path relative to
-// the repository root, kept in Note.File. CRLF line ends are accepted. Unknown
-// header keys are ignored, so an older gm can read notes from a newer one. A
-// format key other than Format is refused rather than ignored: such a note
-// changed in a way this gm cannot read, and reading it as format 1 would be
-// wrong.
+// the repository root, kept in Note.File. Parse accepts CRLF line ends. It
+// ignores unknown header keys, so an older gm can read notes from a newer one.
+// It returns an error when the header is missing, unterminated or has no id.
+// It also refuses a format key other than Format. Such a note changed in a way
+// this gm cannot read, and reading it as format 1 would be wrong.
 func Parse(content []byte, file string) (Note, error) {
 	s := strings.ReplaceAll(string(content), "\r\n", "\n")
 	if !strings.HasPrefix(s, "---\n") {
@@ -112,7 +112,8 @@ func Parse(content []byte, file string) (Note, error) {
 }
 
 // Sections splits a body into its sections, keyed by heading. A section runs
-// from its "## " line to the next one. Text before the first heading is dropped.
+// from its "## " line to the next one. Sections drops text before the first
+// heading.
 func Sections(body string) map[string]string {
 	out := map[string]string{}
 	cur, buf := "", []string(nil)

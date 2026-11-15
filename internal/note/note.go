@@ -2,10 +2,10 @@
 // note must meet.
 //
 // A note file starts with a header between two "---" lines, one "key: value"
-// per line. The title is a JSON string, so any title fits on one line. The at
-// and supersedes lists are written as [a, b], or as a JSON array when an item
-// needs quoting. The body follows the header, with one "## Heading" section for
-// each section in the note type's template.
+// per line. The title is a JSON string, so any title fits on one line. Render
+// writes the at and supersedes lists as [a, b], or as a JSON array when an
+// item needs quoting. The body follows the header, with one "## Heading"
+// section for each section in the note type's template.
 package note
 
 import (
@@ -20,7 +20,7 @@ import (
 
 // Note is one memory note as stored in a file.
 type Note struct {
-	// ID is the creation time plus 6 random hex characters; see NewID.
+	// ID is the creation time plus 6 random hex characters, as NewID makes it.
 	ID string `json:"id"`
 	// Type is decision, lesson, fact or retirement, and picks the template in Templates.
 	Type string `json:"type"`
@@ -32,7 +32,7 @@ type Note struct {
 	// Keywords are space-separated search words, including synonyms the text
 	// does not use. Search weights them between the title and the body.
 	Keywords string `json:"keywords,omitempty"`
-	// At lists the anchors, written commit:path[:from[-to]]; see package anchor.
+	// At lists the anchors, written commit:path[:from[-to]] as package anchor defines.
 	At []string `json:"at,omitempty"`
 	// Supersedes lists the ids of the notes this note replaces. A superseded
 	// note stays on disk as history but is no longer live.
@@ -45,11 +45,11 @@ type Note struct {
 	Migrated string `json:"migrated,omitempty"`
 	// Body holds the "## Heading" sections.
 	Body string `json:"body"`
-	// File is the note's path relative to the repository root. It is not
-	// written in the header, because the file's own path holds it.
+	// File is the note's path relative to the repository root. Render leaves
+	// it out of the header, because the file's own path holds it.
 	File string `json:"file"`
 	// PrunedIn is the commit that deleted the note's file, for a note read
-	// back from git history after gm prune. It is not written in the header.
+	// back from git history after gm prune. Render leaves it out of the header.
 	PrunedIn string `json:"pruned_in,omitempty"`
 }
 
@@ -66,15 +66,15 @@ var Templates = map[string][]Section{
 	"retirement": {{"Why", "why"}},
 }
 
-// Limits a new note must meet. They keep each note to one idea that a search
-// result can show in full. Lengths count characters, not bytes.
+// These are the limits a new note must meet. They keep each note to one idea
+// that a search result can show in full. Lengths count characters, not bytes.
 const (
 	MaxTitle    = 120
 	MaxSection  = 800 // per section
 	MinKeywords = 3   // words, so that synonyms the text does not use can find the note
 )
 
-// NewID returns the id of a note created at t: the UTC time as
+// NewID returns the id of a note created at t. The id is the UTC time as
 // 20060102T150405Z, a hyphen, and 6 random hex characters. The random part keeps
 // ids unique when agents on parallel branches save in the same second. The time
 // part makes ids, and so note file names, sort by creation time.
@@ -84,12 +84,15 @@ func NewID(t time.Time) string {
 	return t.UTC().Format("20060102T150405Z") + "-" + hex.EncodeToString(b)
 }
 
+// nonSlug matches each run of characters that FileName turns into a hyphen.
+// nonSlug matches each run of characters that FileName turns into a hyphen.
+// nonSlug matches each run of characters that FileName turns into a hyphen.
 var nonSlug = regexp.MustCompile(`[^a-z0-9]+`)
 
-// FileName returns the note's file name: the id, a hyphen, and the title in
-// lowercase with each run of other characters turned into a hyphen, cut to 48
-// characters. The id alone identifies the note. The title part helps a person
-// who reads the directory listing.
+// FileName returns the note's file name. The name is the id, a hyphen, and the
+// title in lowercase with each run of other characters turned into a hyphen,
+// cut to 48 characters, then ".md". The id alone identifies the note. The title
+// part helps a person who reads the directory listing.
 func (n Note) FileName() string {
 	s := strings.Trim(nonSlug.ReplaceAllString(strings.ToLower(n.Title), "-"), "-")
 	if len(s) > 48 {

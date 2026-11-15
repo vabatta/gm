@@ -1,5 +1,5 @@
-// Package engram is the importer adapter for Engram, read from a JSON export
-// made with engram export FILE --project NAME.
+// Package engram is the importer adapter for Engram. It reads the JSON export
+// that engram export FILE --project NAME writes.
 package engram
 
 import (
@@ -13,7 +13,7 @@ import (
 // Source reads Engram exports.
 type Source struct{}
 
-// Name is "engram".
+// Name returns "engram".
 func (Source) Name() string { return "engram" }
 
 // export holds the fields of an Engram export that Read uses.
@@ -37,8 +37,9 @@ type export struct {
 // types maps Engram observation types to note types. Any other type becomes a fact.
 var types = map[string]string{"decision": "decision", "learning": "lesson", "bugfix": "lesson"}
 
-// Read returns one record per observation. Only the supersedes relations that
-// Engram marked judged count, because the others were never confirmed.
+// Read returns one record per observation. It keeps only the supersedes
+// relations that Engram marked judged, because Engram never confirmed the
+// others.
 func (Source) Read(file string) ([]importer.Record, error) {
 	raw, err := os.ReadFile(file)
 	if err != nil {

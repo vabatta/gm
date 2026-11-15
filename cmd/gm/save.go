@@ -12,8 +12,8 @@ import (
 
 // save runs gm save TYPE. It defines one flag per section of the type's
 // template, builds the body from those flags, and passes the note to
-// Store.Save. A positional word means a flag value was not quoted, so save
-// refuses it rather than drop it.
+// Store.Save. A positional word means the user left a flag value unquoted, so
+// save refuses it rather than drop it.
 func save(st *memory.Store, args []string, w io.Writer) error {
 	typ := ""
 	if len(args) > 0 {

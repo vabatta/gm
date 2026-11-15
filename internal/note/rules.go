@@ -7,11 +7,11 @@ import (
 )
 
 // Problems returns every rule the note breaks, so gm save can refuse a note
-// with all of its problems at once. Every note is checked for its title, the
-// form of its keywords and topic. The checks stop there for a
-// migrated note, because its body was written before the templates existed.
-// Other notes are also checked for their type, keyword count, retirement
-// target and sections.
+// with all of its problems at once. Problems checks the title and the form of
+// the keywords and topic of every note. For a migrated note the checks stop
+// there, because its body comes from another tool and does not follow the
+// templates. For other notes Problems also checks the type, the keyword count,
+// the retirement target and the sections.
 func (n Note) Problems() []string {
 	var p []string
 	if n.Title == "" || strings.ContainsAny(n.Title, "\r\n") || utf8.RuneCountInString(n.Title) > MaxTitle {

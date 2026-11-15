@@ -1,10 +1,10 @@
 // Package importer writes memories exported from other tools as gm notes.
 //
-// It is the port of a ports-and-adapters design. A Source is the port: an
-// adapter reads one tool's export format into Records, and nothing else. The
-// rules that make a Record a note are written once, in Import, so every
-// source gets the same ids, links and title rules. Adapters live
-// in subpackages, and the command wires them in; this package imports none.
+// It is the port of a ports-and-adapters design. A Source is the port. An
+// adapter reads one tool's export format into Records, and does nothing else.
+// Import holds the rules that make a Record a note, so every source gets the
+// same ids, links and title rules. Adapters live in subpackages. The command
+// wires them in, and this package imports none.
 package importer
 
 import (
@@ -29,7 +29,7 @@ type Record struct {
 
 // Source is the port each adapter implements.
 type Source interface {
-	// Name is the source as the command line and the migrated header name it.
+	// Name returns the source's name, as gm import and the migrated header use it.
 	Name() string
 	// Read parses an export file into records.
 	Read(file string) ([]Record, error)
@@ -40,13 +40,12 @@ type Source interface {
 type Result struct{ Notes, Links int }
 
 // Import reads file with src and writes one note per record. Each note gets a
-// new id from note.NewID at the record's creation time, because ids derived
-// from a source's own ids collided. A supersedes link is kept when both
-// records are written. A title on several lines or longer than note.MaxTitle
-// is cut, and the full title becomes the first paragraph of the body. The
-// migrated header records the source, the record's id and its kind, and
-// exempts the note from the section templates, which other tools' text does
-// not follow.
+// new id from note.NewID at the record's creation time. Import keeps a
+// supersedes link only when the export holds both records. It cuts a title on
+// several lines or longer than note.MaxTitle, and the full title becomes the
+// first paragraph of the body. The migrated header records the source, the
+// record's id and its kind. It also exempts the note from the section
+// templates, which other tools' text does not follow.
 func Import(st *memory.Store, src Source, file string) (Result, error) {
 	recs, err := src.Read(file)
 	if err != nil {

@@ -24,10 +24,10 @@ func (s *Store) added() map[string]string {
 	return m
 }
 
-// Anchors resolves the anchors of every note in ns (see anchor.Resolve), keyed
-// by note file. A note's commit is the fallback base of its anchors. It is
-// looked up only when some anchor's own commit is not in the history of HEAD,
-// because that takes a walk of the history.
+// Anchors resolves the anchors of every note in ns with anchor.Resolve, keyed
+// by note file. The commit that added a note is the fallback base of its
+// anchors. Anchors looks it up only when some anchor's own commit is not in
+// the history of HEAD, because that takes a walk of the history.
 func (s *Store) Anchors(ns []note.Note) map[string][]anchor.Resolved {
 	res := s.resolve(ns, nil)
 	for _, rs := range res {
@@ -40,6 +40,9 @@ func (s *Store) Anchors(ns []note.Note) map[string][]anchor.Resolved {
 	return res
 }
 
+// resolve runs anchor.Resolve once for the anchors of every note in ns, with
+// added giving the commit that added each note file, and groups the results
+// by note file.
 func (s *Store) resolve(ns []note.Note, added map[string]string) map[string][]anchor.Resolved {
 	var targets []anchor.Target
 	for _, n := range ns {

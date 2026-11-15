@@ -11,6 +11,7 @@ import (
 // instead of 2. lint has already printed the problems.
 type lintFailed int
 
+// Error returns the number of problems as the error text.
 func (n lintFailed) Error() string { return fmt.Sprintf("%d problems", int(n)) }
 
 // lint runs gm lint. It prints one line per problem, then the review: and

@@ -1,6 +1,6 @@
 // Command gm keeps project memory in the repository it is about, as one
-// markdown file per note in .memory/notes. Notes are committed with the work
-// and merged by git like code. gm help prints the commands.
+// markdown file per note in .memory/notes. A note goes into the commit with the
+// work, and git merges it like code. gm help prints the commands.
 package main
 
 import (
@@ -38,11 +38,12 @@ Exit status: 0 ok, 1 lint found problems, 2 error.
 `
 
 // version is the gm version without a leading "v", such as 0.1.0. The nix
-// package sets it with -ldflags "-X main.version=...". Without it, the Go
-// toolchain's build info supplies it: go install github.com/vabatta/gm/cmd/gm@v0.1.0
-// records v0.1.0 there, and go build in a checkout records a pseudo-version
-// of the commit, such as 0.0.0-20261115122924-d5a43d04d3e4. A build with no
-// version from either, such as go run, prints dev.
+// package sets it with -ldflags "-X main.version=...". Without it, init takes
+// the version from the Go toolchain's build info. go install
+// github.com/vabatta/gm/cmd/gm@v0.1.0 records v0.1.0 there. go build in a
+// checkout records a pseudo-version of the commit, such as
+// 0.0.0-20261115122924-d5a43d04d3e4. A build with no version from either, such
+// as go run, prints dev.
 var version = ""
 
 func init() {

@@ -66,7 +66,7 @@ func Parse(s string) (Anchor, error) {
 }
 
 // Lines reads a line range written N or N-M, with 1 <= N <= M, and returns the
-// first and last line.
+// first and last line. It returns an error for any other form.
 func Lines(s string) (int, int, error) {
 	a, b, isRange := strings.Cut(s, "-")
 	from, err := strconv.Atoi(a)

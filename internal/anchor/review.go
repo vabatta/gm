@@ -9,13 +9,14 @@ import (
 )
 
 // Changed reports whether the anchored code changed after commit base, the
-// anchor's base (see Resolved). It is false when base is HEAD.
+// anchor's Resolved.Base. It returns false when base is HEAD or git fails.
 //
-// For a line range it runs git blame --reverse from base to HEAD. That names, for each anchored line, the last commit in which the line
-// still existed unchanged. The code changed when any of those commits is not
-// HEAD. blame follows each line forward from base, so lines that
-// moved because lines above them were added or removed are still tracked. For
-// a whole-file anchor, any later commit that touched the file counts.
+// For a line range it runs git blame --reverse from base to HEAD. blame names,
+// for each anchored line, the last commit in which the line still existed
+// unchanged. The code changed when any of those commits is not HEAD. blame
+// follows each line forward from base, so it still tracks lines that moved
+// because a commit added or removed lines above them. For a whole-file anchor,
+// any later commit that touched the file counts.
 func Changed(r *git.Repo, base string, a Anchor) bool {
 	if base == "HEAD" {
 		return false

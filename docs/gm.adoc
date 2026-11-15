@@ -23,7 +23,8 @@ gm - keep project memory as note files in the repository, merged by git
 == DESCRIPTION
 
 *gm* keeps the memory of a project in the repository the memory is about.
-Each note is one markdown file in *.memory/notes/*. You commit the notes with
+Each note is one markdown file in the *notes/* folder of the memory
+directory, *.memory/* or *.agents/memory/* (see *DIRECTORY*). You commit the notes with
 the work, so they travel with branches and worktrees. When branches merge,
 their notes merge with them. git is the only sync. There is no server and no
 index file.
@@ -204,6 +205,23 @@ NFC form.
 So anchors keep working after a merge commit, a squash merge and a rebase
 merge alike. *show*, *lint* and *lint --review* all use the base.
 
+== DIRECTORY
+
+The memory directory is *.agents/memory/* at the root of the worktree when that
+directory exists, and *.memory/* otherwise. The choice lives in the commit, so
+every clone, branch and worktree of the repository uses the same directory. To
+keep the notes in *.agents/memory/*, create it, or move the notes with
+*git mv .memory .agents/memory*. Paths that commands print, such as the path
+that *save* prints, use the memory directory.
+
+*gm* reads notes only from the memory directory. When *.agents/memory/* is the
+memory directory and *.memory/notes/* still holds *.md* files, for example from
+a branch that saved notes before the move, *lint* reports each such file as a
+problem, so no note is left behind unseen.
+
+Commands that read notes from git history read both directories, so after a
+move *show* still finds a note pruned before the move.
+
 == REVISIONS AND TOPICS
 
 To revise a note, save a new note with *--supersedes* _ID_. To withdraw notes
@@ -217,7 +235,7 @@ supersedes both.
 == PRUNING
 
 No command edits a note, so superseded notes pile up. *gm* reads every file in
-*.memory/notes/* for every command, so they also slow it down. *gm prune*
+the notes folder for every command, so they also slow it down. *gm prune*
 deletes them from the working tree, and git history keeps them.
 
 *prune* deletes the file of every note that another note supersedes. It keeps
@@ -257,7 +275,9 @@ title, then the path of the note file on the next line.
 
 *lint* prints one line per problem and exits 1 when it finds any. A problem is:
 
-* a *.md* file in *.memory/notes/* that is not a note;
+* a *.md* file in the notes folder that is not a note;
+* a *.md* file in *.memory/notes/* when *.agents/memory/* is the memory
+  directory;
 * an id used by more than one file;
 * a *supersedes* entry that names no note, neither on disk nor pruned in the
   history of HEAD;
@@ -355,8 +375,8 @@ release of *gm* reads every note format that an earlier release wrote.
 
 == FILES
 
-*.memory/notes/*_ID_-_SLUG_.md*::
-  One note. See *gm-note*(5).
+*.memory/notes/*_ID_-_SLUG_.md*, *.agents/memory/notes/*_ID_-_SLUG_.md*::
+  One note. See *gm-note*(5) and *DIRECTORY*.
 
 == NOTES
 

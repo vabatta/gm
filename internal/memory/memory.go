@@ -1,5 +1,6 @@
 // Package memory reads and writes the notes of one repository, one file per
-// note in <root>/.memory/notes.
+// note in the notes directory of <root>/.agents/memory when that directory
+// exists, and of <root>/.memory otherwise.
 //
 // gm never edits a note file. A revision is a new note that names the old one
 // in its supersedes list. A retirement is a note that supersedes notes with no
@@ -21,7 +22,24 @@ import (
 
 // Store is the memory of one git worktree. It reads the notes of that
 // worktree's checkout, so the notes follow the branch.
-type Store struct{ Git *git.Repo }
+type Store struct {
+	Git *git.Repo
+	// notesPath is NotesDir relative to the worktree root, in the slash form
+	// git prints.
+	notesPath string
+}
+
+// Memory directories relative to the worktree root. agentsDir wins when it
+// exists, so the choice is committed and every clone makes the same one.
+const (
+	agentsDir = ".agents/memory"
+	legacyDir = ".memory"
+)
+
+// historyPaths are the notes directories that git history may hold notes in,
+// both of them, so notes pruned before a move from one to the other stay
+// readable.
+var historyPaths = []string{legacyDir + "/notes", agentsDir + "/notes"}
 
 // Open returns the Store of the worktree that contains dir, or git.ErrNoRepo.
 func Open(dir string) (*Store, error) {
@@ -29,14 +47,15 @@ func Open(dir string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Store{Git: r}, nil
+	d := legacyDir
+	if fi, err := os.Stat(filepath.Join(r.Root, agentsDir)); err == nil && fi.IsDir() {
+		d = agentsDir
+	}
+	return &Store{Git: r, notesPath: d + "/notes"}, nil
 }
 
-// Dir returns the .memory directory at the worktree root.
-func (s *Store) Dir() string { return filepath.Join(s.Git.Root, ".memory") }
-
 // NotesDir returns the directory that holds one markdown file per note.
-func (s *Store) NotesDir() string { return filepath.Join(s.Dir(), "notes") }
+func (s *Store) NotesDir() string { return filepath.Join(s.Git.Root, filepath.FromSlash(s.notesPath)) }
 
 // Files returns the paths of the .md files in NotesDir, sorted by name. A
 // name starts with the note id, so the order is by creation time. A missing

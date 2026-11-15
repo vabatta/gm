@@ -3,6 +3,8 @@ package memory
 import (
 	"fmt"
 	"maps"
+	"path"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -29,6 +31,8 @@ type Report struct {
 //   - a line-range anchor of a note not yet on the default branch whose lines
 //     changed after its base
 //   - a topic with more than one live note
+//   - a .md file in .memory/notes when .agents/memory is the memory directory,
+//     which gm would otherwise never read
 //
 // A note on a branch is about to merge, and a squash merge would hide that
 // its lines changed. So Lint reports that change as a problem rather than a
@@ -39,6 +43,13 @@ func (s *Store) Lint(review bool) Report {
 	ns, bad := s.Load()
 	rep := Report{Problems: bad}
 	report := func(format string, a ...any) { rep.Problems = append(rep.Problems, fmt.Sprintf(format, a...)) }
+	if s.notesPath != historyPaths[0] {
+		left := &Store{Git: s.Git, notesPath: historyPaths[0]}
+		for _, f := range left.Files() {
+			rel, _ := filepath.Rel(s.Git.Root, f)
+			report("%s: %s is the memory directory, so gm does not read this file; move it to %s", filepath.ToSlash(rel), agentsDir, s.notesPath)
+		}
+	}
 	files := map[string][]string{}
 	for _, n := range ns {
 		files[n.ID] = append(files[n.ID], n.File)
@@ -76,7 +87,7 @@ func (s *Store) Lint(review bool) Report {
 	}
 	resolved := s.Anchors(live)
 	merged := s.onDefault()
-	onBranch := func(n note.Note) bool { return merged != nil && !merged[n.File] }
+	onBranch := func(n note.Note) bool { return merged != nil && !merged[path.Base(n.File)] }
 	unseen := 0
 	for _, n := range live {
 		for _, p := range n.Problems() {

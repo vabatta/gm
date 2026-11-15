@@ -83,10 +83,11 @@ func (r *repo) commit(msg string) {
 
 func (r *repo) head() string { r.t.Helper(); return r.git("rev-parse", "--short=12", "HEAD") }
 
-// notes lists the note files.
+// notes lists the note files, in .memory/notes and .agents/memory/notes.
 func (r *repo) notes() []string {
 	files, _ := filepath.Glob(filepath.Join(r.dir, ".memory", "notes", "*.md"))
-	return files
+	agents, _ := filepath.Glob(filepath.Join(r.dir, ".agents", "memory", "notes", "*.md"))
+	return append(files, agents...)
 }
 
 // note writes a note file by hand, for states that gm save never produces.

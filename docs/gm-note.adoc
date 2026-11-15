@@ -9,7 +9,8 @@ gm-note - format of a gm memory note file
 
 == SYNOPSIS
 
-*.memory/notes/*_ID_-_SLUG_.md*
+*.memory/notes/*_ID_-_SLUG_.md* +
+*.agents/memory/notes/*_ID_-_SLUG_.md*
 
 == DESCRIPTION
 

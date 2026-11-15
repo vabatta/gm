@@ -1,5 +1,6 @@
 // Command gm keeps project memory in the repository it is about, as one
-// markdown file per note in .memory/notes. A note goes into the commit with the
+// markdown file per note in .memory/notes, or .agents/memory/notes when
+// .agents/memory exists. A note goes into the commit with the
 // work, and git merges it like code. gm help prints the commands.
 package main
 
@@ -16,6 +17,7 @@ import (
 
 // usage is the text that gm help prints.
 const usage = `gm: project memory as note files in .memory/notes, merged by git.
+Create .agents/memory to keep them in .agents/memory/notes instead.
 
 gm save decision --title T --keywords "a b c" --decision D --why W --rejected R [options]
 gm save lesson   --title T --keywords "a b c" --happened H --cause C --rule R [options]

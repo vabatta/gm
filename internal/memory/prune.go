@@ -4,14 +4,12 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/vabatta/gm/internal/note"
 )
-
-// notesPath is NotesDir relative to the repository root, the form git prints.
-const notesPath = ".memory/notes"
 
 // Prune deletes the file of every note that another note supersedes and
 // returns the paths it deleted. A superseded note whose file is not committed
@@ -58,7 +56,7 @@ type prunedFile struct{ commit, path, blob string }
 // parent, so a note deleted in a merge counts too; Pruned keeps one copy. In a shallow clone it lists only the deletions in the history the
 // clone has.
 func (s *Store) prunedFiles() []prunedFile {
-	out, err := s.Git.Run("log", "--no-renames", "--diff-merges=separate", "--diff-filter=D", "--raw", "--no-abbrev", "--format=commit %H", "--", notesPath)
+	out, err := s.Git.Run("log", "--no-renames", "--diff-merges=separate", "--diff-filter=D", "--raw", "--no-abbrev", "--format=commit %H", "--", historyPaths[0], historyPaths[1])
 	if err != nil {
 		return nil
 	}
@@ -71,7 +69,7 @@ func (s *Store) prunedFiles() []prunedFile {
 		}
 		// :100644 000000 <old blob> <new blob> D<TAB><path>
 		meta, file, ok := strings.Cut(line, "\t")
-		if f := strings.Fields(meta); ok && len(f) == 5 && strings.HasSuffix(file, ".md") && path.Dir(file) == notesPath {
+		if f := strings.Fields(meta); ok && len(f) == 5 && strings.HasSuffix(file, ".md") && slices.Contains(historyPaths, path.Dir(file)) {
 			files = append(files, prunedFile{commit, file, f[2]})
 		}
 	}

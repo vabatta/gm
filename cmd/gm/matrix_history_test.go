@@ -2,6 +2,7 @@ package main
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -92,8 +93,16 @@ func moves(r *repo, branch string) {
 }
 
 func onDisk(r *repo, id string) bool {
-	files, _ := filepath.Glob(filepath.Join(r.dir, ".memory", "notes", id+"-*.md"))
-	return len(files) > 0
+	return slices.ContainsFunc(r.notes(), func(f string) bool { return strings.HasPrefix(filepath.Base(f), id+"-") })
+}
+
+// moveToAgents moves the notes from .memory to .agents/memory with git mv and
+// commits the move.
+func moveToAgents(r *repo) {
+	r.t.Helper()
+	r.write(".agents/.keep", "")
+	r.git("mv", ".memory", ".agents/memory")
+	r.commit("move notes")
 }
 
 func runPrep(prep histPrep, r *repo, id string) {
@@ -130,6 +139,18 @@ func localShapes() []histShape {
 			added := r.head()
 			r.git("branch", "-qD", "feat")
 			runPrep(prep, r, id)
+			return histScenario{r: r, id: id, file: "fetch.go", line: histRetry, anchor: a, added: added}
+		}},
+		{name: "squash merge, then notes moved to .agents/memory", base: baseAdded, build: func(t *testing.T, prep histPrep) histScenario {
+			r := newRepo(t)
+			id, a := feature(r)
+			moves(r, "main")
+			r.git("merge", "-q", "--squash", "feat")
+			r.commit("squash feat")
+			added := r.head()
+			r.git("branch", "-qD", "feat")
+			runPrep(prep, r, id)
+			moveToAgents(r)
 			return histScenario{r: r, id: id, file: "fetch.go", line: histRetry, anchor: a, added: added}
 		}},
 		{name: "rebase then fast-forward, branch deleted", base: baseAdded, build: func(t *testing.T, prep histPrep) histScenario {

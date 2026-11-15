@@ -11,7 +11,6 @@ package note
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"fmt"
 	"regexp"
 	"strings"
 	"time"
@@ -53,19 +52,6 @@ type Note struct {
 	PrunedIn string `json:"pruned_in,omitempty"`
 }
 
-// Section is one heading of a note body and the gm save flag that fills it.
-type Section struct{ Heading, Flag string }
-
-// Templates lists, for each note type, the sections its body must have, in
-// order. gm save defines one flag per section, and Problems refuses a note with
-// a missing or empty section. Only gm retire writes a retirement.
-var Templates = map[string][]Section{
-	"decision":   {{"Decision", "decision"}, {"Why", "why"}, {"Rejected", "rejected"}},
-	"lesson":     {{"What happened", "happened"}, {"Cause", "cause"}, {"Rule now", "rule"}},
-	"fact":       {{"Fact", "fact"}, {"Evidence", "evidence"}},
-	"retirement": {{"Why", "why"}},
-}
-
 // Limits a new note must meet. They keep each note to one idea that a search
 // result can show in full. Lengths count characters, not bytes.
 const (
@@ -105,15 +91,4 @@ func Shorten(s string, max int) string {
 		return s
 	}
 	return strings.TrimSpace(string([]rune(s)[:max-3])) + "..."
-}
-
-// Body renders the body of a note of type typ. text maps a section heading to
-// its text. Sections appear in template order, and a heading missing from text
-// renders as an empty section, which Problems then reports.
-func Body(typ string, text map[string]string) string {
-	var b strings.Builder
-	for _, s := range Templates[typ] {
-		fmt.Fprintf(&b, "## %s\n%s\n\n", s.Heading, strings.TrimSpace(text[s.Heading]))
-	}
-	return strings.TrimSpace(b.String()) + "\n"
 }

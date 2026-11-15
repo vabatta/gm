@@ -20,6 +20,17 @@ buildGoModule (finalAttrs: {
     installManPage gm.1 gm-note.5
     mkdir -p $out/share/gm && cp -r skills $out/share/gm/
   '';
+  # nix flake check builds this package, so it fails when a man page or the
+  # skill is missing from the output, or the binary reports another version.
+  doInstallCheck = true;
+  installCheckPhase = ''
+    runHook preInstallCheck
+    test -s $out/share/man/man1/gm.1.gz
+    test -s $out/share/man/man5/gm-note.5.gz
+    test -s $out/share/gm/skills/memory/SKILL.md
+    test "$($out/bin/gm --version)" = "gm ${finalAttrs.version}"
+    runHook postInstallCheck
+  '';
   meta = {
     description = "Project memory kept as note files in the repository, merged by git";
     mainProgram = "gm";

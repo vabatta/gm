@@ -1,11 +1,11 @@
 ---
-id: 20261114T231757Z-376930
+id: 20261115T124937Z-20be04
 type: decision
 title: "Retirements are live notes that search, list and context show"
 topic: decision/retirements-live
 keywords: retire retirement live hidden search replaced withdrawn
-at: [5cf28a93d07d:internal/memory/memory.go, 5cf28a93d07d:internal/search/search.go]
-created: 2026-11-14T23:17:57Z
+at: [f45202feb63d:internal/memory/memory.go, f45202feb63d:internal/search/search.go]
+created: 2026-11-15T12:49:37Z
 ---
 ## Decision
 memory.Live keeps retirements; only notes that another note supersedes are hidden. Search marks only those as superseded.

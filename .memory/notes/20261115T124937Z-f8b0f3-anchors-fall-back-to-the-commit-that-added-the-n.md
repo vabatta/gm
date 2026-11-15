@@ -1,11 +1,11 @@
 ---
-id: 20261115T000006Z-59616b
+id: 20261115T124937Z-f8b0f3
 type: decision
 title: "Anchors fall back to the commit that added the note after a squash or rebase"
 topic: decision/anchor-base
 keywords: anchor squash rebase merge commit base fallback github
-at: [0739c1463560:internal/anchor/check.go, 0739c1463560:internal/memory/base.go, 0739c1463560:internal/memory/lint.go]
-created: 2026-11-15T00:00:06Z
+at: [f45202feb63d:internal/anchor/check.go, f45202feb63d:internal/memory/base.go, f45202feb63d:internal/memory/lint.go]
+created: 2026-11-15T12:49:37Z
 ---
 ## Decision
 An anchor keeps its commit:path:lines form. gm reads it at its own commit while HEAD reaches it, else at the commit that added the note, else HEAD. On a branch not yet in the default branch, lint fails when a line-range anchor's lines changed after its base; whole-file changes are review lines.

@@ -1,11 +1,11 @@
 ---
-id: 20261114T223830Z-45c356
+id: 20261115T124937Z-537703
 type: fact
 title: "git log -L reads line numbers at HEAD, so it cannot follow an old anchor's lines"
 topic: fact/log-l-vs-blame-reverse
 keywords: git log -L blame reverse review anchor lines moved shifted
-at: [bed9b4d1d781:internal/anchor/anchor.go]
-created: 2026-11-14T22:38:30Z
+at: [f45202feb63d:internal/anchor/review.go]
+created: 2026-11-15T12:49:37Z
 ---
 ## Fact
 git log -L N,M:path A..HEAD takes N and M in the file at HEAD. After lines are inserted above an anchor, it tracks other lines. git blame --reverse -L N,M A..HEAD -- path takes N and M at A and names the last commit where each line existed unchanged; a commit other than HEAD means the line changed.

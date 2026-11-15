@@ -1,11 +1,11 @@
 ---
-id: 20261114T201953Z-8eea2e
+id: 20261115T124937Z-82d205
 type: decision
 title: "The skill is named memory, not gm, so other skills route to it by name only"
 topic: decision/skill-name
 keywords: skill name routing memory agents boundary
-at: [1c120516c3a9:skills/memory/SKILL.md]
-created: 2026-11-14T20:19:53Z
+at: [f45202feb63d:skills/memory/SKILL.md]
+created: 2026-11-15T12:49:37Z
 ---
 ## Decision
 Ship the skill as skills/memory and install it as ~/.claude/skills/memory.

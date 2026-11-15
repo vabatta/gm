@@ -1,11 +1,11 @@
 ---
-id: 20261114T201953Z-0cae2c
+id: 20261115T124937Z-6250cb
 type: decision
 title: "The skill ships inside the gm package so binary and skill always match"
 topic: decision/skill-packaging
 keywords: skill package version share install home-manager
-at: [1c120516c3a9:package.nix, 1c120516c3a9:nix/home-manager.nix]
-created: 2026-11-14T20:19:53Z
+at: [f45202feb63d:package.nix, f45202feb63d:nix/home-manager.nix]
+created: 2026-11-15T12:49:37Z
 ---
 ## Decision
 package.nix copies skills/ to share/gm/skills; the home-manager module links ~/.claude/skills/memory from the package.

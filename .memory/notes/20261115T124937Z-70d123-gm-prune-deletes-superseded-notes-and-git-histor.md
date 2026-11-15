@@ -1,11 +1,11 @@
 ---
-id: 20261114T232634Z-d47ee5
+id: 20261115T124937Z-70d123
 type: decision
 title: "gm prune deletes superseded notes and git history keeps them readable"
 topic: decision/prune
 keywords: prune pruning cleanup delete superseded history git scale growth
-at: [5aa5b9ab847c:internal/memory/prune.go, 5aa5b9ab847c:docs/gm.adoc]
-created: 2026-11-14T23:26:34Z
+at: [f45202feb63d:internal/memory/prune.go]
+created: 2026-11-15T12:49:37Z
 ---
 ## Decision
 gm prune deletes the files of superseded notes that are committed as they are; retirements and other live notes stay. show, search --all and list --all read pruned notes from git (git log --raw names each deleted blob, one cat-file --batch reads them). lint accepts supersedes of pruned ids.

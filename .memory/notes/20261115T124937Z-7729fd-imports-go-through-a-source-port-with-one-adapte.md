@@ -1,17 +1,17 @@
 ---
-id: 20261115T000941Z-ba7d1c
+id: 20261115T124937Z-7729fd
 type: decision
 title: "Imports go through a Source port with one adapter per tool"
 topic: decision/import-ports
 keywords: import importer adapter port hexagonal source engram migration extend
-at: [66335d54f580:internal/importer/importer.go, 66335d54f580:cmd/gm/import.go]
-created: 2026-11-15T00:09:41Z
+at: [f45202feb63d:internal/importer/importer.go, f45202feb63d:internal/importer/engram/engram.go, f45202feb63d:cmd/gm/import.go]
+created: 2026-11-15T12:49:37Z
 ---
 ## Decision
 internal/importer defines Source (Name, Read) and Record, and Import applies the shared rules once. Each tool is an adapter subpackage, such as internal/importer/engram; cmd/gm/import.go maps names to adapters for gm import SOURCE FILE.
 
 ## Why
-Owner asked for a ports-and-adapters import so new sources are easy to add. The shared rules (ids, links, titles, secrets, migrated header) then cannot drift between sources, and an adapter only parses its format.
+The rules that make a record a note (new ids, supersedes links, title shortening, the migrated header) are written once in Import, so they cannot drift between sources, and an adapter only parses its format. Adding a source is one adapter package and one entry in the sources table.
 
 ## Rejected
 One import command per tool (import-engram): each would copy the shared rules. A plugin mechanism: no second source exists yet.

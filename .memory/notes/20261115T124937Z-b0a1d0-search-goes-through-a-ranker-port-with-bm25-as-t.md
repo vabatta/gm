@@ -1,11 +1,11 @@
 ---
-id: 20261115T002056Z-0cdc91
+id: 20261115T124937Z-b0a1d0
 type: decision
 title: "Search goes through a Ranker port with BM25 as the adapter"
 topic: decision/search-port
 keywords: search ranker port adapter bm25 hexagonal index swap
-at: [c6a7ccc2c6a8:internal/search/search.go, c6a7ccc2c6a8:cmd/gm/search.go]
-created: 2026-11-15T00:20:56Z
+at: [f45202feb63d:internal/search/search.go, f45202feb63d:internal/search/bm25/bm25.go, f45202feb63d:cmd/gm/search.go]
+created: 2026-11-15T12:49:37Z
 ---
 ## Decision
 internal/search defines Ranker (Rank notes against query words) and Find, which owns stop words, the --all and --type rules, sorting and the limit. internal/search/bm25 is the adapter; cmd/gm/search.go picks it.

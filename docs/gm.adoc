@@ -222,22 +222,27 @@ configuration of a clone, because each clone has its own.
 
 _dir_ is a path relative to the root of the worktree. *gm* refuses to run, and
 quotes _dir_ as *.gmconfig* writes it, when _dir_ is empty or absolute, leads
-out of the worktree directly or through a symbolic link, has a *.git*
-component, which git never commits, or holds a double quote, a backslash or a
-control character.
+out of the worktree, passes through a symbolic link, whose files git tracks
+under another path, has a *.git* component, which git never commits, or holds a
+double quote, a backslash or a control character.
 
 To move the notes, set _dir_ and move the files with *git mv* in one commit.
 Commands that read notes from git history read every directory that
-*.gmconfig* named in the history of HEAD, and *.agents/memory/*. They match a
-note by its file name, which starts with its id, and a commit that only moves
-a note does not count as the commit that added it. So after a move *show*
+*.gmconfig* named in the history of HEAD, *.agents/memory/*, and
+*.memory/notes/*, where earlier releases kept notes. They read only the files
+directly in those directories that are named _ID_-_SLUG_.md as *gm-note*(5)
+says, so other files there are not notes. They match a note by its file name,
+which starts with its id, and a commit that only moves a note does not count as
+the commit that added it, nor as the commit that pruned it. So after a move *show*
 still finds a note pruned in the old directory, *lint* still accepts a
 *supersedes* entry that names it, an anchor keeps the base it had, and a branch
 that only moves notes does not count them as new.
 
-Earlier releases kept notes in *.memory/notes/*, and *gm* no longer reads
-them there. To upgrade such a repository, move the notes with *mkdir -p .agents
-&& git mv .memory/notes .agents/memory*, or set _dir_ to *.memory/notes*.
+Earlier releases kept notes in *.memory/notes/*, and *gm* no longer reads the
+notes on disk there. To upgrade such a repository, move the notes with *mkdir
+-p .agents && git mv .memory/notes .agents/memory*, or set _dir_ to
+*.memory/notes*. History reads still cover *.memory/notes/*, so the upgrade
+keeps pruned notes and anchor bases.
 
 == REVISIONS AND TOPICS
 

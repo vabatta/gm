@@ -82,13 +82,28 @@ func TestDirectory(t *testing.T) {
 			refused(t, r.gm("list"), ".gmconfig", "gm.dir", fmt.Sprintf("%q", dir))
 		}
 	})
-	t.Run("refuses to run when dir leads out of the worktree through a symbolic link", func(t *testing.T) {
-		r := newRepo(t)
-		if err := os.Symlink(t.TempDir(), filepath.Join(r.dir, "out")); err != nil {
-			t.Fatal(err)
+	t.Run("refuses to run when dir passes through a symbolic link", func(t *testing.T) {
+		for _, c := range []struct{ link, target, dir string }{
+			{"out", "", "out/memory"},
+			{"docs", "real", "docs/memory"},
+			{".agents/memory", "..", ".agents/memory"},
+		} {
+			r := newRepo(t)
+			target := c.target
+			if target == "" {
+				target = t.TempDir()
+			} else if target != ".." {
+				r.write(target+"/.keep", "")
+			}
+			os.MkdirAll(filepath.Dir(filepath.Join(r.dir, c.link)), 0o755)
+			if err := os.Symlink(target, filepath.Join(r.dir, c.link)); err != nil {
+				t.Fatal(err)
+			}
+			if c.dir != ".agents/memory" {
+				r.setDir(c.dir)
+			}
+			refused(t, r.gm("list"), ".gmconfig", "gm.dir", fmt.Sprintf("%q", c.dir))
 		}
-		r.setDir("out/memory")
-		refused(t, r.gm("list"), ".gmconfig", "gm.dir", `"out/memory"`)
 	})
 	t.Run("an unknown command is reported before a bad dir", func(t *testing.T) {
 		r := newRepo(t)
@@ -118,6 +133,49 @@ func TestDirectory(t *testing.T) {
 		if res := r.gm("lint"); res.code != 0 {
 			t.Fatalf("want lint to accept the supersedes entry of %s, got %s", revision, res)
 		}
+	})
+	t.Run("after the upgrade from .memory/notes, history reads still cover it", func(t *testing.T) {
+		r := newRepo(t)
+		r.setDir(".memory/notes")
+		old := r.fact("Fetch retries twice")
+		r.fact("Fetch retries five times", "--supersedes", old)
+		os.Remove(filepath.Join(r.dir, ".gmconfig"))
+		r.commit("notes from an earlier release")
+		r.git("rm", "-q", ".memory/notes/"+old+"-fetch-retries-twice.md")
+		r.commit("prune")
+		r.write(".agents/.keep", "")
+		r.git("mv", ".memory/notes", ".agents/memory")
+		r.commit("upgrade")
+		has(t, r.ok("show", old), "Fetch retries twice", "pruned in")
+		if res := r.gm("lint"); res.code != 0 {
+			t.Fatalf("want lint to accept the supersedes entry of %s, got %s", old, res)
+		}
+	})
+	t.Run("history reads skip files not named as notes", func(t *testing.T) {
+		r := newRepo(t)
+		r.setDir("docs/memory")
+		r.write(".agents/memory/readme-for-other-agent-tools.md", "other tool\n")
+		r.commit("other tool")
+		r.git("rm", "-q", ".agents/memory/readme-for-other-agent-tools.md")
+		r.commit("other tool cleans up")
+		refused(t, r.gm("save", "fact", "--title", "t", "--keywords", "a b c", "--fact", "f", "--evidence", "e", "--supersedes", "readme-for-other-agent-"), "readme-for-other-agent-")
+	})
+	t.Run("a note in a subdirectory on the default branch does not count as merged", func(t *testing.T) {
+		r := newRepo(t)
+		setLine3(r, "fetch.go", "func Fetch() { plain() }")
+		r.commit("code")
+		r.fact("Fetch is plain", "--at", "fetch.go:3")
+		name := strings.TrimPrefix(r.notes()[0], r.dir+"/")
+		archived := ".agents/memory/archive/" + filepath.Base(name)
+		r.write(archived, r.read(name))
+		os.Remove(filepath.Join(r.dir, name))
+		r.commit("archived copy only")
+		r.git("checkout", "-qb", "work")
+		r.write(name, r.read(archived))
+		r.commit("note")
+		setLine3(r, "fetch.go", "func Fetch() { retry() }")
+		r.commit("change")
+		has(t, lintFails(t, r), "the anchored code changed after the note")
 	})
 	t.Run("a branch that only moves notes does not count them as new", func(t *testing.T) {
 		r := newRepo(t)

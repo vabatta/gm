@@ -99,6 +99,14 @@ func (n Note) FileName() string {
 	return n.ID + "-" + s + ".md"
 }
 
+// fileName matches a note file name: an id, a hyphen, a slug and ".md".
+var fileName = regexp.MustCompile(`^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{6}-[a-z0-9-]*\.md$`)
+
+// IsFileName reports whether name has the shape of a note file name, which
+// FileName writes. It lets history reads skip other markdown files that share
+// a notes directory.
+func IsFileName(name string) bool { return fileName.MatchString(name) }
+
 // Shorten cuts s to at most max characters and ends a cut string with "...".
 // It counts characters, not bytes, so it never splits a multibyte character.
 func Shorten(s string, max int) string {

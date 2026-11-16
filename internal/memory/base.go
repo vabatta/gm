@@ -2,7 +2,6 @@ package memory
 
 import (
 	"path"
-	"slices"
 	"strings"
 
 	"github.com/vabatta/gm/internal/anchor"
@@ -34,7 +33,7 @@ func (s *Store) added() map[string]string {
 		if c, ok := strings.CutPrefix(line, "commit "); ok {
 			flush()
 			commit = c
-		} else if status, file, ok := strings.Cut(line, "\t"); ok && slices.Contains(s.historyPaths(), path.Dir(file)) {
+		} else if status, file, ok := strings.Cut(line, "\t"); ok && s.noteFile(file) {
 			if status == "A" {
 				adds[path.Base(file)] = true
 			} else {
@@ -44,14 +43,6 @@ func (s *Store) added() map[string]string {
 	}
 	flush()
 	return m
-}
-
-// log runs git log over historyPaths with --no-renames, one "commit <hash>"
-// line per commit, and paths printed unquoted, so a notes directory with
-// characters beyond ASCII matches the paths git prints.
-func (s *Store) log(args ...string) (string, error) {
-	args = append([]string{"-c", "core.quotePath=false", "log", "--no-renames", "--format=commit %H"}, args...)
-	return s.Git.Run(append(append(args, "--"), s.historyPaths()...)...)
 }
 
 // Anchors resolves the anchors of every note in ns with anchor.Resolve, keyed
@@ -107,7 +98,7 @@ func (s *Store) defaultBranch() string {
 }
 
 // onDefault returns the names of the note files that the default branch
-// holds in any of historyPaths, with one git ls-tree call, or nil when there
+// holds directly in any of historyPaths, with one git ls-tree call, or nil when there
 // is no default branch. A note missing from it is work on a branch that is not
 // merged yet. Names start with the note id, so a branch that only moves notes
 // to another notes directory does not count them as new.
@@ -119,7 +110,9 @@ func (s *Store) onDefault() map[string]bool {
 	out, _ := s.Git.Run(append([]string{"-c", "core.quotePath=false", "ls-tree", "-r", "--name-only", def, "--"}, s.historyPaths()...)...)
 	m := map[string]bool{}
 	for name := range strings.SplitSeq(out, "\n") {
-		m[path.Base(name)] = true
+		if s.noteFile(name) {
+			m[path.Base(name)] = true
+		}
 	}
 	return m
 }

@@ -23,14 +23,14 @@ func TestLint(t *testing.T) {
 	})
 	t.Run("reports a file that is not a note", func(t *testing.T) {
 		r := newRepo(t)
-		r.write(".memory/notes/stray.md", "hello\n")
+		r.write(".agents/memory/stray.md", "hello\n")
 		fails(t, lint(r), "stray.md: no header")
 	})
 	t.Run("reports an id used by more than one file", func(t *testing.T) {
 		r := newRepo(t)
 		head := "type: fact\ntitle: \"T\"\nkeywords: a b c\ncreated: 2020-01-01T00:00:00Z\n"
 		r.note("20200101T000000Z-aaaaaa", head, sound)
-		r.write(".memory/notes/20200101T000000Z-aaaaaa-copy.md", "---\nid: 20200101T000000Z-aaaaaa\n"+head+"---\n"+sound)
+		r.write(".agents/memory/20200101T000000Z-aaaaaa-copy.md", "---\nid: 20200101T000000Z-aaaaaa\n"+head+"---\n"+sound)
 		fails(t, lint(r), "id 20200101T000000Z-aaaaaa is used by 2 notes")
 	})
 	t.Run("reports a supersedes entry that names no note", func(t *testing.T) {
@@ -150,7 +150,7 @@ func TestLint(t *testing.T) {
 			if out := clone.ok("lint"); out != "" {
 				t.Fatalf("%s: want a clean lint, got %q", strategy, out)
 			}
-			added := clone.git("log", "--diff-filter=A", "--format=%h", "--abbrev=12", "--", ".memory/notes")
+			added := clone.git("log", "--diff-filter=A", "--format=%h", "--abbrev=12", "--", ".agents/memory")
 			has(t, clone.ok("show", id), ":fetch.go:3 (read at "+added+", the commit that added the note)\n    3  func Fetch() { retry() }\n")
 			clone.write("fetch.go", "// Package x.\npackage x\n\nfunc Fetch() { retry() }\n")
 			clone.commit("comment above")

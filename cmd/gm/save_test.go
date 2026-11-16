@@ -7,12 +7,12 @@ import (
 )
 
 func TestSave(t *testing.T) {
-	t.Run("writes .memory/notes/ID-SLUG.md and prints the id and the path", func(t *testing.T) {
+	t.Run("writes .agents/memory/ID-SLUG.md and prints the id and the path", func(t *testing.T) {
 		r := newRepo(t)
 		out := r.ok("save", "fact", "--title", "Fetch retries 3 times!", "--keywords", "a b c", "--fact", "f", "--evidence", "e")
-		m := regexp.MustCompile(`^(\d{8}T\d{6}Z-[0-9a-f]{6}) (\.memory/notes/\d{8}T\d{6}Z-[0-9a-f]{6}-fetch-retries-3-times\.md)\n$`).FindStringSubmatch(out)
-		if m == nil || !strings.HasPrefix(m[2], ".memory/notes/"+m[1]) {
-			t.Fatalf("want ID and .memory/notes/ID-SLUG.md, got %q", out)
+		m := regexp.MustCompile(`^(\d{8}T\d{6}Z-[0-9a-f]{6}) (\.agents/memory/\d{8}T\d{6}Z-[0-9a-f]{6}-fetch-retries-3-times\.md)\n$`).FindStringSubmatch(out)
+		if m == nil || !strings.HasPrefix(m[2], ".agents/memory/"+m[1]) {
+			t.Fatalf("want ID and .agents/memory/ID-SLUG.md, got %q", out)
 		}
 		r.read(m[2])
 	})

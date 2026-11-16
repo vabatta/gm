@@ -1,5 +1,6 @@
 // Package memory reads and writes the notes of one repository, one file per
-// note in <root>/.memory/notes.
+// note in <root>/<dir>, where dir is gm.dir in <root>/.gmconfig or
+// .agents/memory.
 //
 // gm never edits a note file. A revision is a new note that names the old one
 // in its supersedes list. A retirement is a note that supersedes notes with no
@@ -21,22 +22,14 @@ import (
 
 // Store is the memory of one git worktree. It reads the notes of that
 // worktree's checkout, so the notes follow the branch.
-type Store struct{ Git *git.Repo }
-
-// Open returns the Store of the worktree that contains dir, or git.ErrNoRepo.
-func Open(dir string) (*Store, error) {
-	r, err := git.Open(dir)
-	if err != nil {
-		return nil, err
-	}
-	return &Store{Git: r}, nil
+type Store struct {
+	Git *git.Repo
+	// notesPath is NotesDir relative to the worktree root, in the slash form
+	// git prints.
+	notesPath string
+	// history caches historyPaths.
+	history []string
 }
-
-// Dir returns the .memory directory at the worktree root.
-func (s *Store) Dir() string { return filepath.Join(s.Git.Root, ".memory") }
-
-// NotesDir returns the directory that holds one markdown file per note.
-func (s *Store) NotesDir() string { return filepath.Join(s.Dir(), "notes") }
 
 // Files returns the paths of the .md files in NotesDir, sorted by name. A
 // name starts with the note id, so the order is by creation time. A missing

@@ -1,5 +1,6 @@
 // Command gm keeps project memory in the repository it is about, as one
-// markdown file per note in .memory/notes. A note goes into the commit with the
+// markdown file per note in .agents/memory, or in the directory that .gmconfig
+// names. A note goes into the commit with the
 // work, and git merges it like code. gm help prints the commands.
 package main
 
@@ -15,7 +16,8 @@ import (
 )
 
 // usage is the text that gm help prints.
-const usage = `gm: project memory as note files in .memory/notes, merged by git.
+const usage = `gm: project memory as note files in .agents/memory, merged by git.
+Keep them elsewhere with a committed .gmconfig: git config -f .gmconfig gm.dir docs/memory
 
 gm save decision --title T --keywords "a b c" --decision D --why W --rejected R [options]
 gm save lesson   --title T --keywords "a b c" --happened H --cause C --rule R [options]
@@ -70,12 +72,12 @@ func run(args []string, dir string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	cmd, args := args[0], args[1:]
-	st, err := memory.Open(dir)
-	if err == nil {
-		if do, ok := commands[cmd]; ok {
+	do, ok := commands[cmd]
+	err := fmt.Errorf("unknown command %q; run gm help", cmd)
+	if ok {
+		var st *memory.Store
+		if st, err = memory.Open(dir); err == nil {
 			err = do(st, args, stdout)
-		} else {
-			err = fmt.Errorf("unknown command %q; run gm help", cmd)
 		}
 	}
 	var lintErr lintFailed

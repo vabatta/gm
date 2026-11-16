@@ -23,7 +23,8 @@ gm - keep project memory as note files in the repository, merged by git
 == DESCRIPTION
 
 *gm* keeps the memory of a project in the repository the memory is about.
-Each note is one markdown file in *.memory/notes/*. You commit the notes with
+Each note is one markdown file in the notes directory, *.agents/memory/* unless
+*.gmconfig* names another (see *DIRECTORY*). You commit the notes with
 the work, so they travel with branches and worktrees. When branches merge,
 their notes merge with them. git is the only sync. There is no server and no
 index file.
@@ -204,6 +205,45 @@ NFC form.
 So anchors keep working after a merge commit, a squash merge and a rebase
 merge alike. *show*, *lint* and *lint --review* all use the base.
 
+== DIRECTORY
+
+The notes directory holds the note files and nothing else. It is
+*.agents/memory/* at the root of the worktree, such as
+*.agents/memory/*_ID_-_SLUG_.md*, unless the file *.gmconfig* at the root
+names another one:
+
+  [gm]
+          dir = docs/memory
+
+*.gmconfig* uses the syntax of *git-config*(1), and *gm* reads it with *git
+config --file*. Commit it, so every clone, branch and worktree of the
+repository uses the same directory. *gm* does not read *gm.dir* from the git
+configuration of a clone, because each clone has its own.
+
+_dir_ is a path relative to the root of the worktree. *gm* refuses to run, and
+quotes _dir_ as *.gmconfig* writes it, when _dir_ is empty or absolute, leads
+out of the worktree, passes through a symbolic link, whose files git tracks
+under another path, has a *.git* component, which git never commits, or holds a
+double quote, a backslash or a control character.
+
+To move the notes, set _dir_ and move the files with *git mv* in one commit.
+Commands that read notes from git history read every directory that
+*.gmconfig* named in the history of HEAD, *.agents/memory/*, and
+*.memory/notes/*, where earlier releases kept notes. They read only the files
+directly in those directories that are named _ID_-_SLUG_.md as *gm-note*(5)
+says, so other files there are not notes. They match a note by its file name,
+which starts with its id, and a commit that only moves a note does not count as
+the commit that added it. So after a move *show*
+still finds a note pruned in the old directory, *lint* still accepts a
+*supersedes* entry that names it, an anchor keeps the base it had, and a branch
+that only moves notes does not count them as new.
+
+Earlier releases kept notes in *.memory/notes/*, and *gm* no longer reads the
+notes on disk there. To upgrade such a repository, move the notes with *mkdir
+-p .agents && git mv .memory/notes .agents/memory*, or set _dir_ to
+*.memory/notes*. History reads still cover *.memory/notes/*, so the upgrade
+keeps pruned notes and anchor bases.
+
 == REVISIONS AND TOPICS
 
 To revise a note, save a new note with *--supersedes* _ID_. To withdraw notes
@@ -217,7 +257,7 @@ supersedes both.
 == PRUNING
 
 No command edits a note, so superseded notes pile up. *gm* reads every file in
-*.memory/notes/* for every command, so they also slow it down. *gm prune*
+the notes directory for every command, so they also slow it down. *gm prune*
 deletes them from the working tree, and git history keeps them.
 
 *prune* deletes the file of every note that another note supersedes. It keeps
@@ -257,7 +297,7 @@ title, then the path of the note file on the next line.
 
 *lint* prints one line per problem and exits 1 when it finds any. A problem is:
 
-* a *.md* file in *.memory/notes/* that is not a note;
+* a *.md* file in the notes directory that is not a note;
 * an id used by more than one file;
 * a *supersedes* entry that names no note, neither on disk nor pruned in the
   history of HEAD;
@@ -355,8 +395,11 @@ release of *gm* reads every note format that an earlier release wrote.
 
 == FILES
 
-*.memory/notes/*_ID_-_SLUG_.md*::
-  One note. See *gm-note*(5).
+*.agents/memory/*_ID_-_SLUG_.md*::
+  One note, in the default notes directory. See *gm-note*(5).
+
+*.gmconfig*::
+  The notes directory, when it is not *.agents/memory/*. See *DIRECTORY*.
 
 == NOTES
 

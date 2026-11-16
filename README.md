@@ -1,6 +1,6 @@
 # gm
 
-gm keeps a project's memory in the repository it is about. Each note is a markdown file in `.memory/notes/`, committed with the code it describes and merged by git. There is no server, no database, and no index file.
+gm keeps a project's memory in the repository it is about. Each note is a markdown file in `.agents/memory/`, or wherever `.gmconfig` puts them, committed with the code it describes and merged by git. There is no server, no database, and no index file.
 
 gm replaces each agent's built-in memory for project knowledge. Claude Code, Codex, and any other agent that runs gm read and write the same notes, so the project has one memory instead of one per tool. Personal preferences stay with each agent's own settings.
 
@@ -27,6 +27,14 @@ The module installs the `gm` binary and the man pages gm(1) and gm-note(5). For 
 
 To link the skill for Codex too, set `programs.gm.codex = true`. The module then links `~/.agents/skills/memory`, where Codex reads personal skills. If your configuration links all of `~/.agents/skills` as one directory with `home.file`, set `recursive = true` on that entry, or the home-manager build fails with "Error installing file '.agents/skills/memory' outside $HOME".
 
+## Choose where notes live
+
+Notes go in `.agents/memory/` by default. To keep them elsewhere, set the directory in a `.gmconfig` file at the repository root and commit it, so every clone agrees:
+
+```sh
+git config --file .gmconfig gm.dir docs/memory
+```
+
 ## Save and find a note
 
 Run every command from the root of a git repository.
@@ -42,7 +50,7 @@ Run every command from the root of a git repository.
      --at internal/cache/store.go
    ```
 
-3. Commit the new file in `.memory/notes/` on the same branch.
+3. Commit the new note file, whose path `gm save` printed, on the same branch.
 4. Later, on any branch that has the note, find it and read it with its code:
 
    ```sh

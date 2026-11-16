@@ -8,21 +8,40 @@ import (
 	"github.com/vabatta/gm/internal/note"
 )
 
-// added maps each note file to the newest commit in the history of HEAD that
-// added it, with one git log call. A note that is not committed has no entry.
-// --no-renames keeps git from reporting a note added next to a similar deleted
-// note as a rename, which would hide the addition.
+// added maps each note file name to the newest commit in the history of HEAD
+// that added it, with one git log call over historyPaths. A note that is not
+// committed has no entry. The key is the file name, which starts with the note
+// id, so a note moved to another notes directory keeps its entry, and a commit
+// that adds a name and deletes it elsewhere only moved the note, so it does
+// not count. --no-renames keeps git from reporting a note added next to a
+// similar deleted note as a rename, which would hide the addition.
 func (s *Store) added() map[string]string {
-	out, _ := s.Git.Run("log", "--no-renames", "--diff-filter=A", "--name-only", "--format=commit %H", "--", notesPath)
+	out, _ := s.log("--diff-filter=AD", "--name-status")
 	m := map[string]string{}
 	commit := ""
+	adds, dels := map[string]bool{}, map[string]bool{}
+	flush := func() {
+		for name := range adds {
+			if !dels[name] && m[name] == "" {
+				m[name] = commit
+			}
+		}
+		clear(adds)
+		clear(dels)
+	}
 	for line := range strings.SplitSeq(out, "\n") {
 		if c, ok := strings.CutPrefix(line, "commit "); ok {
+			flush()
 			commit = c
-		} else if path.Dir(line) == notesPath && m[line] == "" {
-			m[line] = commit
+		} else if status, file, ok := strings.Cut(line, "\t"); ok && s.noteFile(file) {
+			if status == "A" {
+				adds[path.Base(file)] = true
+			} else {
+				dels[path.Base(file)] = true
+			}
 		}
 	}
+	flush()
 	return m
 }
 
@@ -49,7 +68,7 @@ func (s *Store) resolve(ns []note.Note, added map[string]string) map[string][]an
 	var targets []anchor.Target
 	for _, n := range ns {
 		for _, spec := range n.At {
-			targets = append(targets, anchor.Target{Spec: spec, Added: added[n.File]})
+			targets = append(targets, anchor.Target{Spec: spec, Added: added[path.Base(n.File)]})
 		}
 	}
 	res := anchor.Resolve(s.Git, targets)
@@ -78,18 +97,22 @@ func (s *Store) defaultBranch() string {
 	return ""
 }
 
-// onDefault returns the note files that the default branch holds, with one
-// git ls-tree call, or nil when there is no default branch. A note missing
-// from it is work on a branch that is not merged yet.
+// onDefault returns the names of the note files that the default branch
+// holds directly in any of historyPaths, with one git ls-tree call, or nil when there
+// is no default branch. A note missing from it is work on a branch that is not
+// merged yet. Names start with the note id, so a branch that only moves notes
+// to another notes directory does not count them as new.
 func (s *Store) onDefault() map[string]bool {
 	def := s.defaultBranch()
 	if def == "" {
 		return nil
 	}
-	out, _ := s.Git.Run("ls-tree", "--name-only", def+":"+notesPath)
+	out, _ := s.Git.Run(append([]string{"-c", "core.quotePath=false", "ls-tree", "-r", "--name-only", def, "--"}, s.historyPaths()...)...)
 	m := map[string]bool{}
 	for name := range strings.SplitSeq(out, "\n") {
-		m[notesPath+"/"+name] = true
+		if s.noteFile(name) {
+			m[path.Base(name)] = true
+		}
 	}
 	return m
 }

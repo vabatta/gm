@@ -263,7 +263,7 @@ func TestMatrixPaths(t *testing.T) {
 		{"save with a whole-file --at writes the note", "save with a whole-file --at refuses", func(t *testing.T, c pathCase) {
 			r := c.setup(t)
 			out := r.ok("save", "fact", "--title", "Anchored note", "--keywords", "fetch retry backoff", "--fact", "f", "--evidence", "e", "--at", c.spec)
-			if len(r.notes()) != 1 || !strings.Contains(out, ".memory/notes/") {
+			if len(r.notes()) != 1 || !strings.Contains(out, ".agents/memory/") {
 				t.Fatalf("want one note and its path, got %q and %d files", out, len(r.notes()))
 			}
 		}},
@@ -392,11 +392,11 @@ func TestMatrixPaths(t *testing.T) {
 			r := c.setup(t)
 			old := c.save(r, "Anchored note", []string{c.spec})
 			c.save(r, "Anchored note revised", []string{c.spec}, "--supersedes", old)
-			has(t, r.ok("prune"), "kept .memory/notes/"+old+"-")
+			has(t, r.ok("prune"), "kept .agents/memory/"+old+"-")
 			r.commit("notes")
 			anchor := c.anchors(r, "HEAD~1")[0]
 			out := r.ok("prune")
-			has(t, out, "pruned .memory/notes/"+old+"-")
+			has(t, out, "pruned .agents/memory/"+old+"-")
 			if len(r.notes()) != 1 {
 				t.Fatalf("want the revision left, got %d files", len(r.notes()))
 			}
@@ -427,6 +427,42 @@ func TestMatrixPaths(t *testing.T) {
 						t.Fatalf("want no notes listed, got %q", out)
 					}
 				})
+			}
+		})
+	}
+}
+
+// TestMatrixNotesDir runs every command against notes directories of unusual
+// shapes, set with gm.dir in .gmconfig, from DIRECTORY in gm(1).
+func TestMatrixNotesDir(t *testing.T) {
+	dirs := []string{".agents/memory", "docs/memory", "notes dir", "mémoire", "日本語/メモ", "a'b", "a:b", "-dash", "a*b", "a[1]", "lead/ trail "}
+	for _, dir := range dirs {
+		t.Run(dir, func(t *testing.T) {
+			t.Parallel()
+			r := newRepo(t)
+			r.setDir(dir)
+			r.commit("config")
+			prefix := strings.TrimSuffix(filepath.ToSlash(filepath.Clean(dir)), "/") + "/"
+			old := r.fact("Fetch retries twice", "--at", "fetch.go:3")
+			r.commit("note")
+			has(t, r.ok("search", "fetch"), old, prefix+old)
+			has(t, r.ok("show", old), "Fetch retries twice", "func Fetch() {}")
+			has(t, r.ok("list"), old)
+			if res := r.gm("lint"); res.code != 0 {
+				t.Fatalf("lint: want exit 0, got %s", res)
+			}
+			rev := r.fact("Fetch retries five times", "--supersedes", old)
+			r.commit("revise")
+			has(t, r.ok("prune"), "pruned "+prefix+old)
+			r.commit("prune")
+			has(t, r.ok("show", old), "pruned in")
+			has(t, r.ok("search", "--all", "fetch"), old)
+			has(t, r.ok("list", "--all"), old)
+			r.ok("retire", rev, "--why", "Fetch no longer retries at all")
+			r.fact("Fetch retries again", "--supersedes", old)
+			r.commit("more")
+			if res := r.gm("lint"); res.code != 0 {
+				t.Fatalf("lint after prune: want exit 0, got %s", res)
 			}
 		})
 	}

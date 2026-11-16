@@ -32,7 +32,7 @@ def git(repo, *args):
     subprocess.run(["git", *args], cwd=repo, env=ENV, check=True, stdout=subprocess.DEVNULL)
 
 def commit(repo, batch, msg):
-    d = f"{repo}/.memory/notes"
+    d = f"{repo}/.agents/memory"
     os.makedirs(d, exist_ok=True)
     for n in batch:
         open(f"{d}/{fname(n)}", "w").write(render(n))
@@ -62,4 +62,4 @@ for copy in ["full", "pruned"]:
         weeks.setdefault(n["created"][:8] + str(int(n["created"][8:10]) // 7), []).append(n)
     for w, batch in weeks.items():
         commit(repo, batch, f"memory: notes from week of {batch[0]['created'][:10]}")
-print(f"{len(notes)} notes; {len(os.listdir(OUT + '/pruned/nw/.memory/notes'))} left after pruning; {len(weeks)} later commits")
+print(f"{len(notes)} notes; {len(os.listdir(OUT + '/pruned/nw/.agents/memory'))} left after pruning; {len(weeks)} later commits")

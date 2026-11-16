@@ -24,7 +24,7 @@ func TestPruning(t *testing.T) {
 	t.Run("deletes the file of every note that another note supersedes and prints each path", func(t *testing.T) {
 		r, old, _, _ := pruned(t)
 		out := r.ok("prune")
-		if strings.Count(out, "pruned .memory/notes/") != 2 || !strings.Contains(out, "pruned .memory/notes/"+old+"-") {
+		if strings.Count(out, "pruned .agents/memory/") != 2 || !strings.Contains(out, "pruned .agents/memory/"+old+"-") {
 			t.Fatalf("want the revised note and the retired note pruned, got\n%s", out)
 		}
 		if n := len(r.notes()); n != 2 {
@@ -45,7 +45,7 @@ func TestPruning(t *testing.T) {
 		old := r.fact("Fetch retries twice")
 		r.fact("Fetch retries five times", "--supersedes", old)
 		out := r.ok("prune")
-		has(t, out, "kept .memory/notes/"+old+"-")
+		has(t, out, "kept .agents/memory/"+old+"-")
 		lacks(t, out, "pruned ")
 		if n := len(r.notes()); n != 2 {
 			t.Fatalf("want both notes kept, got %d", n)
@@ -78,11 +78,11 @@ func TestPruning(t *testing.T) {
 	})
 	t.Run("keeps a superseded note whose file git ignores", func(t *testing.T) {
 		r := newRepo(t)
-		r.write(".gitignore", ".memory/\n")
+		r.write(".gitignore", ".agents/\n")
 		r.commit("ignore notes")
 		old := r.fact("Fetch retries twice")
 		r.fact("Fetch retries five times", "--supersedes", old)
-		has(t, r.ok("prune"), "kept .memory/notes/"+old+"-")
+		has(t, r.ok("prune"), "kept .agents/memory/"+old+"-")
 		if n := len(r.notes()); n != 2 {
 			t.Fatalf("want both notes kept, got %d", n)
 		}
@@ -123,7 +123,7 @@ func TestPruning(t *testing.T) {
 		r := newRepo(t)
 		old := r.fact("Fetch retries twice")
 		r.commit("note")
-		odd := ".memory/notes/" + old + "-old öne.md"
+		odd := ".agents/memory/" + old + "-old öne.md"
 		r.git("mv", strings.TrimPrefix(r.notes()[0], r.dir+"/"), odd)
 		r.commit("rename")
 		r.write(odd, r.read(odd)+"\nedited\n")
@@ -149,7 +149,7 @@ func TestPruning(t *testing.T) {
 		r.ok("prune")
 		r.commit("prune")
 		r.git("merge", "-q", "--no-edit", "work")
-		if _, err := os.Stat(filepath.Join(r.dir, ".memory", "notes")); err != nil {
+		if _, err := os.Stat(filepath.Join(r.dir, ".agents", "memory")); err != nil {
 			t.Fatal(err)
 		}
 		for _, f := range r.notes() {

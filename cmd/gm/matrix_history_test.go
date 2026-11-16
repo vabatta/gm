@@ -2,6 +2,7 @@ package main
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -92,8 +93,7 @@ func moves(r *repo, branch string) {
 }
 
 func onDisk(r *repo, id string) bool {
-	files, _ := filepath.Glob(filepath.Join(r.dir, ".memory", "notes", id+"-*.md"))
-	return len(files) > 0
+	return slices.ContainsFunc(r.notes(), func(f string) bool { return strings.HasPrefix(filepath.Base(f), id+"-") })
 }
 
 func runPrep(prep histPrep, r *repo, id string) {
@@ -130,6 +130,18 @@ func localShapes() []histShape {
 			added := r.head()
 			r.git("branch", "-qD", "feat")
 			runPrep(prep, r, id)
+			return histScenario{r: r, id: id, file: "fetch.go", line: histRetry, anchor: a, added: added}
+		}},
+		{name: "squash merge, then notes moved to another gm.dir", base: baseAdded, build: func(t *testing.T, prep histPrep) histScenario {
+			r := newRepo(t)
+			id, a := feature(r)
+			moves(r, "main")
+			r.git("merge", "-q", "--squash", "feat")
+			r.commit("squash feat")
+			added := r.head()
+			r.git("branch", "-qD", "feat")
+			runPrep(prep, r, id)
+			move(r, ".agents/memory", "docs/memory")
 			return histScenario{r: r, id: id, file: "fetch.go", line: histRetry, anchor: a, added: added}
 		}},
 		{name: "rebase then fast-forward, branch deleted", base: baseAdded, build: func(t *testing.T, prep histPrep) histScenario {
@@ -279,7 +291,7 @@ func localShapes() []histShape {
 			r.commit("main")
 			r.git("merge", "-q", "--no-ff", "--no-commit", "feat2")
 			r.fact("Fetch retries, revised in the merge", "--supersedes", id)
-			has(t, r.ok("prune"), "pruned .memory/notes/"+id+"-")
+			has(t, r.ok("prune"), "pruned .agents/memory/"+id+"-")
 			r.commit("merge feat2, revise and prune")
 			deleted := r.head()
 			runPrep(prep, r, id)
@@ -523,7 +535,7 @@ func prunedScenario(t *testing.T, sh histShape) (histScenario, string) {
 		if !onDisk(r, id) {
 			return
 		}
-		has(t, r.ok("prune"), "pruned .memory/notes/"+id+"-")
+		has(t, r.ok("prune"), "pruned ", "/"+id+"-")
 		r.commit("prune")
 		prunedIn = r.head()
 	})
@@ -694,7 +706,7 @@ func noCommitCells() []histCell {
 		r.fact("Fetch retries, revised", "--supersedes", old)
 		// The superseded note is not committed, so prune keeps it.
 		out := r.ok("prune")
-		has(t, out, "kept .memory/notes/"+old+"-")
+		has(t, out, "kept .agents/memory/"+old+"-")
 		lacks(t, out, "pruned ")
 		return r, old
 	}

@@ -188,6 +188,11 @@ __COMMIT__:__PATH__[:__FROM__[-__TO__]].
 When __PATH__[:__LINES__] as a whole names a committed file, *save* takes it as
 the path, so a file name that contains *:* needs no escaping.
 
+*save* writes the path as git spells it at HEAD. On macOS, git stores a file
+name in Unicode NFC form, so a path typed in NFD form, such as *café.go* with
+a combining accent, still names the committed file, and the anchor holds the
+NFC form.
+
 *gm* reads an anchor at a _base_ commit:
 
 * the anchor's own commit, while it is in the history of HEAD;

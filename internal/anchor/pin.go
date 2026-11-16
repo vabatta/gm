@@ -12,7 +12,7 @@ import (
 // into an anchor at HEAD, with the commit id cut to 12 hex characters.
 //
 // When spec names a file at HEAD, Pin takes it whole, so a path that contains
-// ":" needs no escaping. Otherwise a final ":N" or ":N-M" is the line range.
+// ":" needs no escaping. The anchor holds the path as git spells it at HEAD. Otherwise a final ":N" or ":N-M" is the line range.
 // Pin refuses a file that is not committed at HEAD or that has uncommitted
 // changes, because the anchor must show the code that the note describes. It
 // also refuses an empty path, a path with a line break, which the one-line
@@ -43,6 +43,15 @@ func Pin(r *git.Repo, spec string) (Anchor, error) {
 	}
 	if typ != "blob" {
 		return Anchor{}, fmt.Errorf("at %s: the path names a directory, not a file", spec)
+	}
+	// git may spell the path in another Unicode form than spec: on macOS,
+	// core.precomposeUnicode turns an NFD name into the NFC name the tree
+	// holds. Later lookups, such as cat-file --batch-check on stdin, are not
+	// precomposed, so the anchor keeps the tree's spelling.
+	if name, err := r.Run("ls-tree", "-z", "--name-only", "HEAD", "--", a.Path); err == nil {
+		if name, ok := strings.CutSuffix(name, "\x00"); ok && name != "" && !strings.Contains(name, "\x00") {
+			a.Path = name
+		}
 	}
 	if !r.AtHEAD([]string{a.Path})[a.Path] {
 		return Anchor{}, fmt.Errorf("at %s: the file has uncommitted changes; commit the code first, then save the note", spec)

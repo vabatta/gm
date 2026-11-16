@@ -233,7 +233,7 @@ Commands that read notes from git history read every directory that
 directly in those directories that are named _ID_-_SLUG_.md as *gm-note*(5)
 says, so other files there are not notes. They match a note by its file name,
 which starts with its id, and a commit that only moves a note does not count as
-the commit that added it, nor as the commit that pruned it. So after a move *show*
+the commit that added it. So after a move *show*
 still finds a note pruned in the old directory, *lint* still accepts a
 *supersedes* entry that names it, an anchor keeps the base it had, and a branch
 that only moves notes does not count them as new.

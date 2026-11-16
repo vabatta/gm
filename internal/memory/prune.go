@@ -51,48 +51,29 @@ type prunedFile struct{ commit, path, blob string }
 // diff names the blob of each deleted file, so Pruned can read the note by
 // blob id without walking the tree of the commit before. --no-renames keeps
 // git from pairing a deleted note with a similar note added in the same
-// commit, which would hide the deletion. A commit that deletes a note and adds
-// the same file name, which moves it to another notes directory, did not prune
-// it, so the note is not listed for it. --diff-merges=separate shows a merge
+// commit, which would hide the deletion. --diff-merges=separate shows a merge
 // commit's diff against each parent, so a note deleted in a merge counts too;
-// Pruned keeps one copy. In a shallow clone it lists only the deletions in the
-// history the clone has.
+// Pruned keeps one copy. A commit that moved notes to another notes directory
+// lists them too, and Pruned skips the notes still on disk. In a shallow clone
+// it lists only the deletions in the history the clone has.
 func (s *Store) prunedFiles() []prunedFile {
-	out, err := s.log("--diff-merges=separate", "--diff-filter=AD", "--raw", "--no-abbrev")
+	out, err := s.log("--diff-merges=separate", "--diff-filter=D", "--raw", "--no-abbrev")
 	if err != nil {
 		return nil
 	}
-	var files, dels []prunedFile
-	adds := map[string]bool{}
-	flush := func() {
-		for _, f := range dels {
-			if !adds[path.Base(f.path)] {
-				files = append(files, f)
-			}
-		}
-		dels = dels[:0]
-		clear(adds)
-	}
+	var files []prunedFile
 	commit := ""
 	for line := range strings.SplitSeq(out, "\n") {
 		if c, ok := strings.CutPrefix(line, "commit "); ok {
-			flush()
 			commit = c
 			continue
 		}
 		// :100644 000000 <old blob> <new blob> D<TAB><path>
 		meta, file, ok := strings.Cut(line, "\t")
-		f := strings.Fields(meta)
-		if !ok || len(f) != 5 || !s.noteFile(file) {
-			continue
-		}
-		if f[4] == "A" {
-			adds[path.Base(file)] = true
-		} else {
-			dels = append(dels, prunedFile{commit, file, f[2]})
+		if f := strings.Fields(meta); ok && len(f) == 5 && s.noteFile(file) {
+			files = append(files, prunedFile{commit, file, f[2]})
 		}
 	}
-	flush()
 	return files
 }
 
@@ -113,9 +94,20 @@ const idLen = 23
 
 // Pruned reads the notes deleted in the history of HEAD back from git, by the
 // blob each deleted file held, with one cat-file --batch call. It sets each
-// note's PrunedIn to the commit that deleted it, cut to 12 hex characters.
+// note's PrunedIn to the commit that deleted it, cut to 12 hex characters. It
+// skips a deleted file whose name is in NotesDir, which a move left there, so
+// it reads no blob of a note that is on disk.
 func (s *Store) Pruned() []note.Note {
-	files := s.prunedFiles()
+	onDisk := map[string]bool{}
+	for _, f := range s.Files() {
+		onDisk[filepath.Base(f)] = true
+	}
+	var files []prunedFile
+	for _, f := range s.prunedFiles() {
+		if !onDisk[path.Base(f.path)] {
+			files = append(files, f)
+		}
+	}
 	if len(files) == 0 {
 		return nil
 	}

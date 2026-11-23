@@ -13,6 +13,8 @@ At the start of a task, and before reading code to answer a question, run `gm se
 
 A note is evidence from the time it was written, not a fact about the code now. When `gm show` and the current code disagree, the code wins. Save a revision.
 
+Before you act on a note, check the names in its body that no anchor covers, because `gm lint` checks only anchors. A path must exist. A symbol must appear in `git grep -nwF` on a line that is not a comment, since a mention in another note or comment does not keep a name alive. Skip the Rejected and What happened sections, which may name what never existed or is gone. A name that is missing makes the note stale: treat it as history and save a revision. Done when every name the note relies on is found, or the note is marked stale in your reply.
+
 ## What a memory is
 
 A memory is knowledge about the project that a later agent needs and cannot get from the repository. The repository is the code, the tests, the docs, AGENTS.md, and `git log`. A memory is one of three things, and nothing else:

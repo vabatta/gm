@@ -14,6 +14,9 @@ buildGoModule (finalAttrs: {
   # The specs run gm against real git repositories; ssh-keygen signs commits
   # for the log.showSignature case of the git config matrix.
   nativeCheckInputs = [ git openssh ];
+  # The specs spawn gm and git thousands of times, which macOS runners do
+  # several times slower than Linux, past go test's default 10m timeout.
+  checkFlags = [ "-timeout=30m" ];
   nativeBuildInputs = [ makeWrapper asciidoctor installShellFiles ];
   # The man pages and the skill ship with the binary, so all three always describe the same version.
   postInstall = ''

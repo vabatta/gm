@@ -261,7 +261,11 @@ func matrixGitState(t *testing.T) {
 		}
 		t.Run("in a submodule", func(t *testing.T) {
 			setup := func(t *testing.T) (r *repo, id, at string) {
+				// The submodule gets a commit of its own, so its HEAD is never
+				// an object of the superproject, whatever the clock says.
 				sub := newRepo(t)
+				sub.write("sub.go", "package sub\n")
+				sub.commit("sub")
 				r = newRepo(t)
 				r.git("-c", "protocol.file.allow=always", "submodule", "add", "-q", "file://"+sub.dir, "sub")
 				r.git("commit", "-qm", "submodule")

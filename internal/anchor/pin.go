@@ -16,7 +16,8 @@ import (
 // Pin refuses a file that is not committed at HEAD or that has uncommitted
 // changes, because the anchor must show the code that the note describes. It
 // also refuses an empty path, a path with a line break, which the one-line
-// header cannot hold, a directory, and a range past the end of the file.
+// header cannot hold, a directory or submodule, and a range past the end of
+// the file.
 func Pin(r *git.Repo, spec string) (Anchor, error) {
 	head, err := r.Run("rev-parse", "--short=12", "HEAD")
 	if err != nil {
@@ -38,7 +39,13 @@ func Pin(r *git.Repo, spec string) (Anchor, error) {
 			a.Path = a.Path[:loc[0]]
 		}
 		if typ, err = r.Run("cat-file", "-t", "HEAD:"+a.Path); err != nil {
-			return Anchor{}, fmt.Errorf("at %s: the file is not committed at HEAD", spec)
+			// A submodule is a tree entry whose commit lives in the
+			// submodule's own object store, so cat-file cannot read it, yet
+			// rev-parse resolves the entry from the tree alone.
+			if _, err := r.Run("rev-parse", "-q", "--verify", "HEAD:"+a.Path); err != nil {
+				return Anchor{}, fmt.Errorf("at %s: the file is not committed at HEAD", spec)
+			}
+			typ = "commit"
 		}
 	}
 	if typ != "blob" {

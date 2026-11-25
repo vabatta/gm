@@ -11,6 +11,9 @@ buildGoModule (finalAttrs: {
   vendorHash = null; # standard library only
   env.CGO_ENABLED = "0";
   ldflags = [ "-s" "-w" "-X main.version=${finalAttrs.version}${lib.optionalString (rev != null) "+${rev}"}" ];
+  # The specs take minutes, so a user who installs gm does not run them;
+  # the flake's checks turn them back on, so nix flake check still does.
+  doCheck = false;
   # The specs run gm against real git repositories; ssh-keygen signs commits
   # for the log.showSignature case of the git config matrix.
   nativeCheckInputs = [ git openssh ];

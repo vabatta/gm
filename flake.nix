@@ -21,7 +21,8 @@
       });
 
       checks = forAll (pkgs: {
-        default = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
+        # The package skips the specs to install fast; the check runs them.
+        default = self.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs { doCheck = true; };
       });
 
       homeManagerModules.default = import ./nix/home-manager.nix self;
